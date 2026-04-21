@@ -139,8 +139,10 @@ public class Utils {
         }
 
         // Es una URL
-        InputStream tmpStream = new BufferedInputStream(uri.toURL().openStream());
-        byte[] tmpBuffer = getDataFromInputStream(tmpStream);
+        byte[] tmpBuffer;
+        try (InputStream tmpStream = new BufferedInputStream(uri.toURL().openStream())) {
+            tmpBuffer = getDataFromInputStream(tmpStream);
+        }
         return new ByteArrayInputStream(tmpBuffer);
     }
 
@@ -353,13 +355,8 @@ public class Utils {
             return null;
         }
         X509Certificate cert;
-        try (InputStream isCert = new ByteArrayInputStream(Base64.getDecoder().decode(b64Cert));) {
+        try (InputStream isCert = new ByteArrayInputStream(Base64.getDecoder().decode(b64Cert))) {
             cert = (X509Certificate) CertificateFactory.getInstance("X.509").generateCertificate(isCert);
-            try {
-                isCert.close();
-            } catch (Exception e) {
-                LOGGER.log(Level.WARNING, "Error cerrando el flujo de lectura del certificado: {0}", e);
-            }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "No se pudo decodificar el certificado en Base64, se devolvera null: {0}", e);
             return null;

@@ -26,11 +26,8 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -98,7 +95,8 @@ public class JwtAuthenticationFilter implements ContainerRequestFilter {
     }
     
     /**
-     * Intenta extraer el token JWT del cuerpo de la petición (parámetro jwt)
+     * Intenta extraer el token JWT del cuerpo de la petición (parámetro jwt).
+     * Lee el body una sola vez como byte[] para evitar doble copia en memoria.
      */
     private String extractTokenFromBody(ContainerRequestContext requestContext) {
         try {
@@ -107,15 +105,15 @@ public class JwtAuthenticationFilter implements ContainerRequestFilter {
             if (mediaType == null || !mediaType.isCompatible(MediaType.APPLICATION_FORM_URLENCODED_TYPE)) {
                 return null;
             }
-            
-            // Leer el cuerpo de la petición
-            InputStream originalStream = requestContext.getEntityStream();
-            String body = readInputStream(originalStream);
-            
+
+            // Leer el cuerpo una sola vez como bytes (evita la doble copia String + byte[])
+            byte[] bodyBytes = requestContext.getEntityStream().readAllBytes();
+
             // Restaurar el stream para que el endpoint pueda leerlo
-            requestContext.setEntityStream(new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)));
-            
+            requestContext.setEntityStream(new ByteArrayInputStream(bodyBytes));
+
             // Parsear el cuerpo para extraer el parámetro jwt
+            String body = new String(bodyBytes, StandardCharsets.UTF_8);
             if (body.contains("jwt=")) {
                 String[] params = body.split("&");
                 for (String param : params) {
@@ -128,26 +126,12 @@ public class JwtAuthenticationFilter implements ContainerRequestFilter {
                     }
                 }
             }
-            
+
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Error al extraer token del cuerpo: {0}", e.getMessage());
         }
-        
+
         return null;
-    }
-    
-    /**
-     * Lee un InputStream y lo convierte a String
-     */
-    private String readInputStream(InputStream stream) throws IOException {
-        StringBuilder builder = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                builder.append(line);
-            }
-        }
-        return builder.toString();
     }
     
     /**

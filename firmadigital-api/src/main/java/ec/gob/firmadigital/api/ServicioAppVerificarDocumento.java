@@ -63,11 +63,9 @@ public class ServicioAppVerificarDocumento extends RequestSizeFilter {
             }
             
             // 1. Decodificar documento
-            LOGGER.log(Level.INFO, "Decodificando documento");
             byte[] docBytes = decodificarBase64(documentoBase64);
-            
+
             // 2. Verificar firmas del PDF
-            LOGGER.log(Level.INFO, "Extrayendo firmas del documento PDF");
             PadesSigner padesSigner = new PadesSigner();
             List<SignInfo> firmas = padesSigner.getSigners(docBytes);
             
@@ -138,8 +136,7 @@ public class ServicioAppVerificarDocumento extends RequestSizeFilter {
             }
             
             response.add("firmas", firmasArray);
-            
-            LOGGER.log(Level.INFO, "Verificación completada. Se encontraron {0} firma(s)", firmas.size());
+
             return new Gson().toJson(response);
             
         } catch (IllegalArgumentException e) {
@@ -188,7 +185,7 @@ public class ServicioAppVerificarDocumento extends RequestSizeFilter {
         }
         
         // Limpiar la cadena: eliminar espacios, saltos de línea, retornos de carro, tabulaciones
-        String cleaned = base64String.trim().replaceAll("\\s+", "");
+        String cleaned = base64String.replaceAll("\\s+", "");
         
         try {
             // Intentar con decoder estándar primero

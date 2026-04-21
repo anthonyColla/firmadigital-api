@@ -79,13 +79,11 @@ public class ServicioAppValidarCertificadoDigital extends RequestSizeFilter {
             }
             
             // 1. Decodificar certificado PKCS#12
-            LOGGER.log(Level.INFO, "Decodificando certificado PKCS#12");
             byte[] certBytes = decodificarBase64(pkcs12Base64);
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
             keyStore.load(new ByteArrayInputStream(certBytes), password.toCharArray());
-            
+
             // 2. Obtener certificado
-            LOGGER.log(Level.INFO, "Obteniendo certificado X509");
             String alias = keyStore.aliases().nextElement();
             X509Certificate cert = (X509Certificate) keyStore.getCertificate(alias);
             
@@ -100,7 +98,6 @@ public class ServicioAppValidarCertificadoDigital extends RequestSizeFilter {
             
             try {
                 cert.checkValidity();
-                LOGGER.log(Level.INFO, "Certificado vigente");
             } catch (CertificateExpiredException e) {
                 valido = false;
                 estado = "EXPIRADO";
@@ -187,7 +184,6 @@ public class ServicioAppValidarCertificadoDigital extends RequestSizeFilter {
                 response.addProperty("advertencia", "El certificado expirará en menos de 30 días");
             }
             
-            LOGGER.log(Level.INFO, "Validación completada: {0}", estado);
             return new Gson().toJson(response);
             
         } catch (IllegalArgumentException e) {
@@ -384,7 +380,7 @@ public class ServicioAppValidarCertificadoDigital extends RequestSizeFilter {
         }
         
         // Limpiar la cadena: eliminar espacios, saltos de línea, retornos de carro, tabulaciones
-        String cleaned = base64String.trim().replaceAll("\\s+", "");
+        String cleaned = base64String.replaceAll("\\s+", "");
         
         try {
             // Intentar con decoder estándar primero
