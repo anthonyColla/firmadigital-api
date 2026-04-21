@@ -88,7 +88,7 @@ public class QrAppereance implements CustomAppearance {
         text = text + "RAZON: " + "Firmado digitalmente con Nexus Soluciones" + "\n";
         text = text + "LOCALIZACION: " + "ECUADOR" + "\n";
         text = text + "FECHA: " + signTime + "\n";
-        text = text + "VALIDAR CON: " + "https://www.solucionesnexus.com" + "\n";
+        text = text + "VALIDAR CON: " + "https://firmador.solucionesnexus.com" + "\n";
         text = text + infoQR;
 
         try {
