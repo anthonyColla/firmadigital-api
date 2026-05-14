@@ -459,6 +459,7 @@ public class Utils {
                                                     certificado.getDatosUsuario().setApellido("");
                                                     certificado.setDocTimeStamp(tsToken.getTimeStampInfo().getGenTime());
                                                     certificado.setDocTimeStampIssuedBy(CertEcUtils.getNombreCA(x509Certificate));
+                                                    certificado.setCnTimeStamp(getCN(x509Certificate));
                                                     certificado.setDatosUsuario(infoCertificado(certificado.getDatosUsuario(), signInfo));
                                                     try {
                                                         if (verifySignature(x509Certificate)) {

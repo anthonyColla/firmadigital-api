@@ -19,6 +19,8 @@ package ec.gob.firmadigital.api;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import ec.gob.firmadigital.api.security.Secured;
+import ec.gob.firmadigital.libreria.certificate.CertEcUtils;
+import ec.gob.firmadigital.libreria.certificate.to.DatosUsuario;
 import ec.gob.firmadigital.libreria.sign.DigestAlgorithm;
 import ec.gob.firmadigital.libreria.sign.PrivateKeySigner;
 import ec.gob.firmadigital.libreria.sign.pdf.PadesBasic;
@@ -138,13 +140,16 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
                     
                     // Metadatos de firma
                     if (metadata.has("razon")) {
-                        params.setProperty("razon", metadata.get("razon").getAsString());
+                        params.setProperty("signingReason", metadata.get("razon").getAsString());
                     }
                     if (metadata.has("localizacion")) {
-                        params.setProperty("localizacion", metadata.get("localizacion").getAsString());
+                        params.setProperty("signingLocation", metadata.get("localizacion").getAsString());
                     }
                     if (metadata.has("cargo")) {
                         params.setProperty("cargo", metadata.get("cargo").getAsString());
+                    }
+                    if (metadata.has("identificacion")) {
+                        params.setProperty("identificacion", metadata.get("identificacion").getAsString());
                     }
                     
                     // Metadatos del QR
@@ -179,7 +184,21 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
                 }
             }
             
-            // Configurar posición del QR usando los nombres correctos de la librería
+            // 4.1 Extraer identificacion del certificado si no fue proporcionada
+            if (params.getProperty("identificacion") == null || params.getProperty("identificacion").isEmpty()) {
+                try {
+                    X509Certificate x509Cert = (X509Certificate) certChain[0];
+                    DatosUsuario datosUsuario = CertEcUtils.getDatosUsuarios(x509Cert);
+                    if (datosUsuario != null && datosUsuario.getCedula() != null && !datosUsuario.getCedula().isEmpty()) {
+                        params.setProperty("identificacion", datosUsuario.getCedula());
+                        LOGGER.log(Level.INFO, "Identificacion extraida del certificado para TSA");
+                    }
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "No se pudo extraer identificacion del certificado: {0}", e.getMessage());
+                }
+            }
+
+            // Configurar posicion del QR usando los nombres correctos de la libreria
             params.setProperty("PositionOnPageLowerLeftX", String.valueOf((int)qrPosX));
             params.setProperty("PositionOnPageLowerLeftY", String.valueOf((int)qrPosY));
             params.setProperty("PositionOnPageUpperRightX", String.valueOf((int)qrAncho));

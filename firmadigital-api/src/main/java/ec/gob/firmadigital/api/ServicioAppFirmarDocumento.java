@@ -29,10 +29,14 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
+import ec.gob.firmadigital.libreria.certificate.CertEcUtils;
+import ec.gob.firmadigital.libreria.certificate.to.DatosUsuario;
+
 import java.io.ByteArrayInputStream;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
 import java.util.Base64;
 import java.util.Properties;
 import java.util.logging.Level;
@@ -99,16 +103,33 @@ public class ServicioAppFirmarDocumento extends RequestSizeFilter {
                 try {
                     JsonObject metadata = new Gson().fromJson(jsonMetadata, JsonObject.class);
                     if (metadata.has("razon")) {
-                        params.setProperty("razon", metadata.get("razon").getAsString());
+                        params.setProperty("signingReason", metadata.get("razon").getAsString());
                     }
                     if (metadata.has("localizacion")) {
-                        params.setProperty("localizacion", metadata.get("localizacion").getAsString());
+                        params.setProperty("signingLocation", metadata.get("localizacion").getAsString());
                     }
                     if (metadata.has("cargo")) {
                         params.setProperty("cargo", metadata.get("cargo").getAsString());
                     }
+                    if (metadata.has("identificacion")) {
+                        params.setProperty("identificacion", metadata.get("identificacion").getAsString());
+                    }
                 } catch (Exception e) {
-                    LOGGER.log(Level.WARNING, "Error al parsear metadatos JSON, se ignorarán: {0}", e.getMessage());
+                    LOGGER.log(Level.WARNING, "Error al parsear metadatos JSON, se ignoraran: {0}", e.getMessage());
+                }
+            }
+
+            // 4.1 Extraer identificacion del certificado si no fue proporcionada
+            if (params.getProperty("identificacion") == null || params.getProperty("identificacion").isEmpty()) {
+                try {
+                    X509Certificate x509Cert = (X509Certificate) certChain[0];
+                    DatosUsuario datosUsuario = CertEcUtils.getDatosUsuarios(x509Cert);
+                    if (datosUsuario != null && datosUsuario.getCedula() != null && !datosUsuario.getCedula().isEmpty()) {
+                        params.setProperty("identificacion", datosUsuario.getCedula());
+                        LOGGER.log(Level.INFO, "Identificacion extraida del certificado para TSA");
+                    }
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "No se pudo extraer identificacion del certificado: {0}", e.getMessage());
                 }
             }
             
