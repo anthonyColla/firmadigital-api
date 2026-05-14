@@ -74,13 +74,11 @@ public class ServicioAppFirmarDocumento extends RequestSizeFilter {
             }
             
             // 1. Decodificar certificado PKCS#12
-            LOGGER.log(Level.INFO, "Decodificando certificado PKCS#12");
             byte[] certBytes = decodificarBase64(pkcs12Base64);
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
             keyStore.load(new ByteArrayInputStream(certBytes), password.toCharArray());
-            
+
             // 2. Obtener llave privada y cadena de certificados
-            LOGGER.log(Level.INFO, "Obteniendo llave privada y certificados");
             String alias = keyStore.aliases().nextElement();
             PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, password.toCharArray());
             Certificate[] certChain = keyStore.getCertificateChain(alias);
@@ -93,7 +91,6 @@ public class ServicioAppFirmarDocumento extends RequestSizeFilter {
             }
             
             // 3. Decodificar documento
-            LOGGER.log(Level.INFO, "Decodificando documento PDF");
             byte[] docBytes = decodificarBase64(documentoBase64);
             
             // 4. Parsear metadatos (si existen)
@@ -110,14 +107,12 @@ public class ServicioAppFirmarDocumento extends RequestSizeFilter {
                     if (metadata.has("cargo")) {
                         params.setProperty("cargo", metadata.get("cargo").getAsString());
                     }
-                    LOGGER.log(Level.INFO, "Metadatos de firma: {0}", metadata);
                 } catch (Exception e) {
                     LOGGER.log(Level.WARNING, "Error al parsear metadatos JSON, se ignorarán: {0}", e.getMessage());
                 }
             }
             
             // 5. Crear firmador y firmar documento
-            LOGGER.log(Level.INFO, "Iniciando firma del documento");
             PrivateKeySigner signer = new PrivateKeySigner(privateKey, DigestAlgorithm.SHA256);
             PadesBasic padesSigner = new PadesBasic(signer);
             
@@ -127,8 +122,7 @@ public class ServicioAppFirmarDocumento extends RequestSizeFilter {
             
             // 6. Codificar y retornar
             String documentoFirmadoBase64 = Base64.getEncoder().encodeToString(documentoFirmado);
-            LOGGER.log(Level.INFO, "Documento firmado exitosamente");
-            
+
             JsonObject response = new JsonObject();
             response.addProperty("resultado", "OK");
             response.addProperty("mensaje", "Documento firmado exitosamente");
@@ -164,16 +158,8 @@ public class ServicioAppFirmarDocumento extends RequestSizeFilter {
             throw new IllegalArgumentException("Cadena Base64 vacía");
         }
         
-        // Log de la longitud original para debugging
-        LOGGER.log(Level.INFO, "Longitud Base64 original: {0}", base64String.length());
-        
-        // Limpiar la cadena: eliminar espacios, saltos de línea, retornos de carro, tabulaciones
-        String cleaned = base64String.trim().replaceAll("\\s+", "");
-        
-        LOGGER.log(Level.INFO, "Longitud Base64 después de limpiar: {0}", cleaned.length());
-        LOGGER.log(Level.FINE, "Primeros 50 caracteres: {0}", cleaned.substring(0, Math.min(50, cleaned.length())));
-        LOGGER.log(Level.FINE, "Últimos 50 caracteres: {0}", cleaned.length() > 50 ? cleaned.substring(cleaned.length() - 50) : cleaned);
-        
+        String cleaned = base64String.replaceAll("\\s+", "");
+
         try {
             // Intentar con decoder estándar primero
             return Base64.getDecoder().decode(cleaned);

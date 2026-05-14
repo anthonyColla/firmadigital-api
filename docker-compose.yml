@@ -11,7 +11,7 @@ services:
       - "9990:9990"    # Puerto de administración WildFly (opcional)
     environment:
       # Variables de entorno para configuración
-      - JAVA_OPTS=-Xms512m -Xmx2048m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m
+      - JAVA_OPTS=-server -Xms1024m -Xmx2048m -XX:MetaspaceSize=128M -XX:MaxMetaspaceSize=256m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:G1HeapRegionSize=16m -XX:+ParallelRefProcEnabled -XX:+UseStringDeduplication -Xlog:gc*:file=/opt/jboss/wildfly/standalone/log/gc.log:time,uptime,level,tags:filecount=5,filesize=20m -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/opt/jboss/wildfly/standalone/log/heap-dump.hprof
     volumes:
       # Volumen opcional para logs persistentes
       - ./logs:/opt/jboss/wildfly/standalone/log

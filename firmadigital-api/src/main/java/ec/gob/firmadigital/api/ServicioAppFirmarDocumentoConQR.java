@@ -98,13 +98,11 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
             }
             
             // 1. Decodificar certificado PKCS#12
-            LOGGER.log(Level.INFO, "Decodificando certificado PKCS#12");
             byte[] certBytes = decodificarBase64(pkcs12Base64);
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
             keyStore.load(new ByteArrayInputStream(certBytes), password.toCharArray());
-            
+
             // 2. Obtener llave privada y cadena de certificados
-            LOGGER.log(Level.INFO, "Obteniendo llave privada y certificados");
             String alias = keyStore.aliases().nextElement();
             PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, password.toCharArray());
             Certificate[] certChain = keyStore.getCertificateChain(alias);
@@ -120,7 +118,6 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
             String nombreFirmante = extraerNombreFirmante(certChain[0]);
             
             // 3. Decodificar documento
-            LOGGER.log(Level.INFO, "Decodificando documento PDF");
             byte[] docBytes = decodificarBase64(documentoBase64);
             
             // 4. Parsear metadatos y configurar parámetros de firma con QR
@@ -177,7 +174,6 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
                         qrAlto = metadata.get("qrAlto").getAsFloat();
                     }
                     
-                    LOGGER.log(Level.INFO, "Metadatos procesados: {0}", metadata);
                 } catch (Exception e) {
                     LOGGER.log(Level.WARNING, "Error al parsear metadatos JSON, se usarán valores por defecto: {0}", e.getMessage());
                 }
@@ -190,7 +186,6 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
             params.setProperty("PositionOnPageUpperRightY", String.valueOf((int)qrAlto));
             
             // 5. Firmar digitalmente el documento con QR (la librería maneja todo)
-            LOGGER.log(Level.INFO, "Iniciando firma digital del documento con QR");
             PrivateKeySigner signer = new PrivateKeySigner(privateKey, DigestAlgorithm.SHA256);
             PadesBasic padesSigner = new PadesBasic(signer);
             
@@ -200,8 +195,7 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
             
             // 6. Codificar y retornar
             String documentoFirmadoBase64 = Base64.getEncoder().encodeToString(documentoFirmado);
-            LOGGER.log(Level.INFO, "Documento firmado con QR exitosamente");
-            
+
             JsonObject response = new JsonObject();
             response.addProperty("resultado", "OK");
             response.addProperty("mensaje", "Documento firmado con QR exitosamente");
@@ -265,14 +259,8 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
             throw new IllegalArgumentException("Cadena Base64 vacía");
         }
         
-        // Log de la longitud original para debugging
-        LOGGER.log(Level.INFO, "Longitud Base64 original: {0}", base64String.length());
-        
-        // Limpiar la cadena: eliminar espacios, saltos de línea, retornos de carro, tabulaciones
-        String cleaned = base64String.trim().replaceAll("\\s+", "");
-        
-        LOGGER.log(Level.INFO, "Longitud Base64 después de limpiar: {0}", cleaned.length());
-        
+        String cleaned = base64String.replaceAll("\\s+", "");
+
         try {
             // Intentar con decoder estándar primero
             return Base64.getDecoder().decode(cleaned);
