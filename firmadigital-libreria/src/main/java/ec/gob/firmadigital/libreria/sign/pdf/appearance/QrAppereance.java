@@ -126,21 +126,22 @@ public class QrAppereance implements CustomAppearance {
         textDiv.setWidth(signatureRect.getWidth());
         textDiv.setVerticalAlignment(VerticalAlignment.MIDDLE);
         textDiv.setHorizontalAlignment(HorizontalAlignment.LEFT);
+        textDiv.setPaddingLeft(2f);
 
-        Text texto = new Text("Firmado electrónicamente por:\n");
-        Paragraph paragraph = new Paragraph().add(texto).setFont(fontCourier).setMargin(0).setMultipliedLeading(0.9f)
+        Text validar = new Text("Validar únicamente con Nexus Soluciones.");
+        Paragraph pValidar = new Paragraph().add(validar).setFont(fontCourier).setMargin(0).setMultipliedLeading(1.0f)
                 .setFontSize(3.25f);
-        textDiv.add(paragraph);
+        textDiv.add(pValidar);
+
+        Text firmado = new Text("Firmado electrónicamente por:");
+        Paragraph pFirmado = new Paragraph().add(firmado).setFont(fontCourier).setMargin(0).setMultipliedLeading(1.0f)
+                .setFontSize(3.25f);
+        textDiv.add(pFirmado);
 
         Text contenido = new Text(nombreFirmante.trim());
-        paragraph = new Paragraph().add(contenido).setFont(fontCourierBold).setMargin(0).setMultipliedLeading(0.9f)
+        Paragraph pNombre = new Paragraph().add(contenido).setFont(fontCourierBold).setMargin(0).setMultipliedLeading(0.9f)
                 .setFontSize(6.25f);
-        textDiv.add(paragraph);
-
-        Text info = new Text("\nValidar únicamente con Nexus Soluciones\n");
-        paragraph = new Paragraph().add(info).setFont(fontCourier).setMargin(0).setMultipliedLeading(0.9f)
-                .setFontSize(3.25f);
-        textDiv.add(paragraph);
+        textDiv.add(pNombre);
 
         try (Canvas textLayoutCanvas = new Canvas(canvas, signatureRect)) {
             textLayoutCanvas.add(textDiv);

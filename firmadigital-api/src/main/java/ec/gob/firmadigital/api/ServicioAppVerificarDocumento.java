@@ -20,6 +20,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import ec.gob.firmadigital.api.security.Secured;
+import ec.gob.firmadigital.api.utils.Base64Utils;
 import ec.gob.firmadigital.libreria.certificate.to.Certificado;
 import ec.gob.firmadigital.libreria.certificate.to.DatosUsuario;
 import ec.gob.firmadigital.libreria.certificate.to.Documento;
@@ -36,8 +37,10 @@ import jakarta.ws.rs.core.MediaType;
 import com.itextpdf.kernel.pdf.PdfReader;
 
 import java.io.ByteArrayInputStream;
-import java.text.SimpleDateFormat;
-import java.util.Base64;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -53,7 +56,15 @@ import java.util.logging.Logger;
 public class ServicioAppVerificarDocumento extends RequestSizeFilter {
 
     private static final Logger LOGGER = Logger.getLogger(ServicioAppVerificarDocumento.class.getName());
-    private static final SimpleDateFormat SDF_ISO8601 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+    private static final DateTimeFormatter ISO8601 = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+
+    private static String fmtCal(Calendar cal) {
+        return cal.toInstant().atZone(ZoneId.systemDefault()).format(ISO8601);
+    }
+
+    private static String fmtDate(Date date) {
+        return date.toInstant().atZone(ZoneId.systemDefault()).format(ISO8601);
+    }
 
     @POST
     @Secured
@@ -69,7 +80,7 @@ public class ServicioAppVerificarDocumento extends RequestSizeFilter {
                 return crearRespuestaError("El documento es requerido");
             }
 
-            byte[] docBytes = decodificarBase64(documentoBase64);
+            byte[] docBytes = Base64Utils.decodificar(documentoBase64);
 
             // Extraer firmas del PDF
             PadesSigner padesSigner = new PadesSigner();
@@ -111,16 +122,16 @@ public class ServicioAppVerificarDocumento extends RequestSizeFilter {
                 firmaObj.addProperty("issuedBy", cert.getIssuedBy());
 
                 if (cert.getValidFrom() != null) {
-                    firmaObj.addProperty("validFrom", SDF_ISO8601.format(cert.getValidFrom().getTime()));
+                    firmaObj.addProperty("validFrom", fmtCal(cert.getValidFrom()));
                 }
                 if (cert.getValidTo() != null) {
-                    firmaObj.addProperty("validTo", SDF_ISO8601.format(cert.getValidTo().getTime()));
+                    firmaObj.addProperty("validTo", fmtCal(cert.getValidTo()));
                 }
                 if (cert.getSignGenerated() != null) {
-                    firmaObj.addProperty("fechaFirma", SDF_ISO8601.format(cert.getSignGenerated().getTime()));
+                    firmaObj.addProperty("fechaFirma", fmtCal(cert.getSignGenerated()));
                 }
                 if (cert.getRevocated() != null) {
-                    firmaObj.addProperty("revocated", SDF_ISO8601.format(cert.getRevocated().getTime()));
+                    firmaObj.addProperty("revocated", fmtCal(cert.getRevocated()));
                 }
 
                 firmaObj.addProperty("certificadoValido", cert.getCertificateValidated());
@@ -132,9 +143,9 @@ public class ServicioAppVerificarDocumento extends RequestSizeFilter {
                 // Sellado de Tiempo (TSA)
                 firmaObj.addProperty("docValidTimeStamp", cert.getDocValidTimeStamp());
                 if (cert.getDocTimeStamp() != null) {
-                    firmaObj.addProperty("docTimeStamp", SDF_ISO8601.format(cert.getDocTimeStamp()));
+                    firmaObj.addProperty("docTimeStamp", fmtDate(cert.getDocTimeStamp()));
                     firmaObj.addProperty("docTimeStampIssuedBy", cert.getDocTimeStampIssuedBy());
-                    firmaObj.addProperty("selladoTiempoFecha", SDF_ISO8601.format(cert.getDocTimeStamp()));
+                    firmaObj.addProperty("selladoTiempoFecha", fmtDate(cert.getDocTimeStamp()));
                     firmaObj.addProperty("selladoTiempoEmitidoPor", cert.getDocTimeStampIssuedBy());
                     firmaObj.addProperty("selladoTiempoValido", cert.getDocValidTimeStamp());
                     if (cert.getCnTimeStamp() != null) {
@@ -180,26 +191,5 @@ public class ServicioAppVerificarDocumento extends RequestSizeFilter {
         error.addProperty("mensaje", mensaje);
         error.addProperty("firmaValida", false);
         return new Gson().toJson(error);
-    }
-
-    private byte[] decodificarBase64(String base64String) {
-        if (base64String == null || base64String.isEmpty()) {
-            throw new IllegalArgumentException("Cadena Base64 vacia");
-        }
-
-        String cleaned = base64String.replaceAll("\\s+", "");
-
-        try {
-            return Base64.getDecoder().decode(cleaned);
-        } catch (IllegalArgumentException e1) {
-            LOGGER.log(Level.WARNING, "Fallo decodificacion estandar, intentando con MIME decoder: {0}", e1.getMessage());
-
-            try {
-                return Base64.getMimeDecoder().decode(cleaned);
-            } catch (IllegalArgumentException e2) {
-                LOGGER.log(Level.SEVERE, "Error al decodificar Base64 con ambos decoders: {0}", e2.getMessage());
-                throw new IllegalArgumentException("El contenido Base64 no es valido. Verifique que el contenido este correctamente codificado.");
-            }
-        }
     }
 }

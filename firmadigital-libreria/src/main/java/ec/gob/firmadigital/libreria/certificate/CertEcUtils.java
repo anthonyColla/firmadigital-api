@@ -52,12 +52,17 @@ import ec.gob.firmadigital.libreria.certificate.to.DatosUsuario;
 import ec.gob.firmadigital.libreria.exceptions.EntidadCertificadoraNoValidaException;
 import ec.gob.firmadigital.libreria.utils.Utils;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  * Validar diferentes certificados digitales acreditados por ARCOTEL
  *
- * @author Misael Fernández
+ * @author Misael Fernandez
  */
 public class CertEcUtils {
+
+    private static final Logger LOGGER = Logger.getLogger(CertEcUtils.class.getName());
 
     public static final String BCE_NAME = "BANCO CENTRAL DEL ECUADOR";
     public static final String CJ_NAME = "CONSEJO DE LA JUDICATURA";
@@ -82,11 +87,11 @@ public class CertEcUtils {
             case BCE_NAME: {
                 try {
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new BceSubCaCert20112021())) {
-                        System.out.println("BceSubCaCert 2011-2021");
+                        LOGGER.log(Level.FINE,"BceSubCaCert 2011-2021");
                         return new BceSubCaCert20112021();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new BceSubCaCert20192029())) {
-                        System.out.println("BceSubCaCert 2019-2029");
+                        LOGGER.log(Level.FINE,"BceSubCaCert 2019-2029");
                         return new BceSubCaCert20192029();
                     }
                     return null;
@@ -97,15 +102,15 @@ public class CertEcUtils {
             case SECURITYDATA_NAME: {
                 try {
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new SecurityDataSubCaCert20112026())) {
-                        System.out.println("SecurityDataSubCaCert");
+                        LOGGER.log(Level.FINE,"SecurityDataSubCaCert");
                         return new SecurityDataSubCaCert20112026();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new SecurityDataSubCaCert20192031())) {
-                        System.out.println("SecurityDataSubCaCert 2019-2031");
+                        LOGGER.log(Level.FINE,"SecurityDataSubCaCert 2019-2031");
                         return new SecurityDataSubCaCert20192031();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new SecurityDataSubCaCert20202039())) {
-                        System.out.println("SecurityDataSubCaCert 2020-2032");
+                        LOGGER.log(Level.FINE,"SecurityDataSubCaCert 2020-2032");
                         return new SecurityDataSubCaCert20202039();
                     }
                     return null;
@@ -118,11 +123,11 @@ public class CertEcUtils {
             case ANFAC_NAME:
                 try {
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new AnfAc18332SubCaCert20162032())) {
-                        System.out.println("Anf 2016-2032");
+                        LOGGER.log(Level.FINE,"Anf 2016-2032");
                         return new AnfAc18332SubCaCert20162032();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new AnfAc37442SubCaCert20192029())) {
-                        System.out.println("Anf 2019-2029");
+                        LOGGER.log(Level.FINE,"Anf 2019-2029");
                         return new AnfAc37442SubCaCert20192029();
                     }
                     return null;
@@ -135,15 +140,15 @@ public class CertEcUtils {
             case UANATACA_NAME: {
                 try {
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new UanatacaSubCaCert0120162029())) {
-                        System.out.println("Uanataca 2016-2029");
+                        LOGGER.log(Level.FINE,"Uanataca 2016-2029");
                         return new UanatacaSubCaCert0120162029();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new UanatacaSubCaCert0220162029())) {
-                        System.out.println("Uanataca 2016-2029");
+                        LOGGER.log(Level.FINE,"Uanataca 2016-2029");
                         return new UanatacaSubCaCert0220162029();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new UanatacaSubCaCert0320212034())) {
-                        System.out.println("Uanataca 2021-2034");
+                        LOGGER.log(Level.FINE,"Uanataca 2021-2034");
                         return new UanatacaSubCaCert0320212034();
                     }
                     return null;
@@ -160,19 +165,19 @@ public class CertEcUtils {
             case LAZZATE_NAME: {
                 try {
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new LazzateSubCaCert())) {
-                        System.out.println("LazzateCA 2022-2037");
+                        LOGGER.log(Level.FINE,"LazzateCA 2022-2037");
                         return new LazzateSubCaCert();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new LazzateSubCa1Cert())) {
-                        System.out.println("LazzateCA1 2023-2053");
+                        LOGGER.log(Level.FINE,"LazzateCA1 2023-2053");
                         return new LazzateSubCa1Cert();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new LazzateSubCa2Cert())) {
-                        System.out.println("LazzateCA2 2023-2053");
+                        LOGGER.log(Level.FINE,"LazzateCA2 2023-2053");
                         return new LazzateSubCa2Cert();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new LazzateSubCaWeGoCert())) {
-                        System.out.println("LazzateCAWeGo 2023-2053");
+                        LOGGER.log(Level.FINE,"LazzateCAWeGo 2023-2053");
                         return new LazzateSubCaWeGoCert();
                     }
                 } catch (java.security.InvalidKeyException ex) {
@@ -182,27 +187,27 @@ public class CertEcUtils {
             case CORPNEWBEST_NAME: {
                 try {
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new CorpNewBestSubCa1_20232033Cert())) {
-                        System.out.println("CorpNewBestSubCa1Cert");
+                        LOGGER.log(Level.FINE,"CorpNewBestSubCa1Cert");
                         return new CorpNewBestSubCa1_20232033Cert();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new CorpNewBestSubCa2_20232033Cert())) {
-                        System.out.println("CorpNewBestSubCa2Cert");
+                        LOGGER.log(Level.FINE,"CorpNewBestSubCa2Cert");
                         return new CorpNewBestSubCa2_20232033Cert();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new CorpNewBestSubCa3_20232033Cert())) {
-                        System.out.println("CorpNewBestSubCa3Cert");
+                        LOGGER.log(Level.FINE,"CorpNewBestSubCa3Cert");
                         return new CorpNewBestSubCa3_20232033Cert();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new CorpNewBestSubCa1_2024011020330619Cert())) {
-                        System.out.println("CorpNewBestSubCa1_2024011020330619Cert");
+                        LOGGER.log(Level.FINE,"CorpNewBestSubCa1_2024011020330619Cert");
                         return new CorpNewBestSubCa1_2024011020330619Cert();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new CorpNewBestSubCa2_2024011020330619Cert())) {
-                        System.out.println("CorpNewBestSubCa2_2024011020330619Cert");
+                        LOGGER.log(Level.FINE,"CorpNewBestSubCa2_2024011020330619Cert");
                         return new CorpNewBestSubCa2_2024011020330619Cert();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new CorpNewBestSubCa3_2024011020330619Cert())) {
-                        System.out.println("CorpNewBestSubCa3_2024011020330619Cert");
+                        LOGGER.log(Level.FINE,"CorpNewBestSubCa3_2024011020330619Cert");
                         return new CorpNewBestSubCa3_2024011020330619Cert();
                     }
                     return null;
@@ -213,11 +218,11 @@ public class CertEcUtils {
             case ALPHATECHNOLOGIES_NAME: {
                 try {
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new AlphaTechnologiesSubCaCert20232026())) {
-                        System.out.println("AlphaTechnologiesSubCaCert 2023-2026");
+                        LOGGER.log(Level.FINE,"AlphaTechnologiesSubCaCert 2023-2026");
                         return new AlphaTechnologiesSubCaCert20232026();
                     }
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new AlphaTechnologiesSubCaCert20242032())) {
-                        System.out.println("AlphaTechnologiesSubCaCert 2024-2032");
+                        LOGGER.log(Level.FINE,"AlphaTechnologiesSubCaCert 2024-2032");
                         return new AlphaTechnologiesSubCaCert20242032();
                     }
                     return null;
@@ -228,7 +233,7 @@ public class CertEcUtils {
             case FIRMASEGURA_NAME: {
                 try {
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new FirmaSeguraSubCaCert20232043())) {
-                        System.out.println("FirmaSeguraSubCaCert2023-2043");
+                        LOGGER.log(Level.FINE,"FirmaSeguraSubCaCert2023-2043");
                         return new FirmaSeguraSubCaCert20232043();
                     }
                     return null;
@@ -239,7 +244,7 @@ public class CertEcUtils {
             case LETMI_NAME: {
                 try {
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new LetmiSubCaCert20252035())) {
-                        System.out.println("LetmiSubCaCert2025-2035");
+                        LOGGER.log(Level.FINE,"LetmiSubCaCert2025-2035");
                         return new LetmiSubCaCert20252035();
                     }
                     return null;
@@ -250,7 +255,7 @@ public class CertEcUtils {
             case APPFIRMAS_NAME: {
                 try {
                     if (ec.gob.firmadigital.libreria.utils.Utils.verifySignature(certificado, new AppFirmasSubCaCert20252050())) {
-                        System.out.println("AppFirmasSubCaCert2025-2050");
+                        LOGGER.log(Level.FINE,"AppFirmasSubCaCert2025-2050");
                         return new AppFirmasSubCaCert20252050();
                     }
                     return null;
