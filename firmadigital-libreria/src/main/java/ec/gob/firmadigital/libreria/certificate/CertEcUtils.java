@@ -637,6 +637,7 @@ public class CertEcUtils {
             CertificadoLazzate certificadoLazzate = CertificadoLazzateDataFactory.construir(certificado);
             if (certificadoLazzate instanceof CertificadoPersonaNatural certificadoPersonaNatural) {
                 datosUsuario.setCedula(certificadoPersonaNatural.getCedulaPasaporte());
+                datosUsuario.setTipoCertificado("Persona Natural (EXT)");
                 if (certificadoPersonaNatural.getNombres().isEmpty()) {
                     datosUsuario.setNombre(Utils.getCN(certificado));
                     datosUsuario.setApellido("");
@@ -647,8 +648,8 @@ public class CertEcUtils {
                 }
             }
             if (certificadoLazzate instanceof CertificadoPersonaJuridica certificadoPersonaJuridica) {
-
                 datosUsuario.setCedula(certificadoPersonaJuridica.getCedulaPasaporte());
+                datosUsuario.setTipoCertificado("Persona Juridica (EXT)");
                 datosUsuario.setInstitucion(certificadoPersonaJuridica.getRazonSocial());
                 datosUsuario.setCargo(certificadoPersonaJuridica.getCargo());
                 if (certificadoPersonaJuridica.getNombres().isEmpty()) {
@@ -658,6 +659,25 @@ public class CertEcUtils {
                     datosUsuario.setNombre(certificadoPersonaJuridica.getNombres());
                     datosUsuario.setApellido(certificadoPersonaJuridica.getPrimerApellido() + " "
                             + certificadoPersonaJuridica.getSegundoApellido());
+                }
+            }
+            // Fallback: si cedula vacia, extraer de Subject DN (SERIALNUMBER)
+            if (datosUsuario.getCedula() == null || datosUsuario.getCedula().isEmpty()) {
+                try {
+                    org.bouncycastle.asn1.x500.X500Name subjectName = new org.bouncycastle.cert.jcajce.JcaX509CertificateHolder(certificado).getSubject();
+                    String serialNumber = CertUtils.getSubjectFieldByOID(subjectName, org.bouncycastle.asn1.x500.style.BCStyle.SERIALNUMBER);
+                    if (serialNumber != null && !serialNumber.isEmpty()) {
+                        datosUsuario.setCedula(serialNumber);
+                    }
+                    // Si nombre es solo CN (sin separar), intentar GIVENNAME + SURNAME
+                    String givenName = CertUtils.getSubjectFieldByOID(subjectName, org.bouncycastle.asn1.x500.style.BCStyle.GIVENNAME);
+                    String surname = CertUtils.getSubjectFieldByOID(subjectName, org.bouncycastle.asn1.x500.style.BCStyle.SURNAME);
+                    if (givenName != null && !givenName.isEmpty()) {
+                        datosUsuario.setNombre(givenName);
+                        datosUsuario.setApellido(surname != null ? surname : "");
+                    }
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Error extrayendo datos de Subject DN para Lazzate: {0}", e.getMessage());
                 }
             }
             datosUsuario.setCertificadoDigitalValido(true);

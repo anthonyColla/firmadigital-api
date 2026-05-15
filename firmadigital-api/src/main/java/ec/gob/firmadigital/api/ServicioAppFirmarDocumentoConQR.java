@@ -43,39 +43,11 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- * REST Web Service para firmar documentos PDF con estampado QR.
- * Este servicio usa la librería de firma digital con soporte nativo de QR
- * a través del parámetro typeSig="QR" y los parámetros infoQR y de posición.
- *
- * @author Luis González
- */
 @Path("/appfirmardocumentoconqr")
 public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
 
     private static final Logger LOGGER = Logger.getLogger(ServicioAppFirmarDocumentoConQR.class.getName());
 
-    /**
-     * Firma un documento PDF con estampado visual QR usando la librería.
-     * 
-     * @param pkcs12Base64 Certificado PKCS#12 codificado en Base64
-     * @param password Contraseña del certificado
-     * @param documentoBase64 Documento PDF codificado en Base64
-     * @param jsonMetadata JSON con metadatos:
-     *   Metadatos de firma:
-     *   - razon: Razón de la firma (opcional, default: "Firma digital")
-     *   - localizacion: Ubicación de la firma (opcional, default: "Ecuador")
-     *   - cargo: Cargo del firmante (opcional)
-     *   
-     *   Metadatos del estampado QR:
-     *   - infoQR: Información adicional para el QR (opcional, ej: URL de verificación)
-     *   - qrPagina: Número de página donde estampar (opcional, default: última página)
-     *   - qrPosX: Posición X del estampado (opcional, default: 50)
-     *   - qrPosY: Posición Y del estampado (opcional, default: 50)
-     *   - qrAncho: Ancho del estampado (opcional, default: 200)
-     *   - qrAlto: Alto del estampado (opcional, default: 100)
-     * @return JSON con el documento firmado y estampado en Base64
-     */
     @POST
     @Secured
     @Produces(MediaType.APPLICATION_JSON)
@@ -86,60 +58,51 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
             @FormParam("documento") String documentoBase64,
             @FormParam("json") String jsonMetadata
     ) {
-        LOGGER.log(Level.INFO, "Iniciando proceso de firma de documento con estampado QR");
-        
+        LOGGER.log(Level.INFO, "Iniciando firma con QR");
+
         try {
-            // Validar parámetros requeridos
             if (pkcs12Base64 == null || pkcs12Base64.isEmpty()) {
                 return crearRespuestaError("El certificado PKCS#12 es requerido");
             }
             if (password == null || password.isEmpty()) {
-                return crearRespuestaError("La contraseña del certificado es requerida");
+                return crearRespuestaError("La clave del certificado es requerida");
             }
             if (documentoBase64 == null || documentoBase64.isEmpty()) {
                 return crearRespuestaError("El documento a firmar es requerido");
             }
-            
-            // 1. Decodificar certificado PKCS#12
+
+            // 1. Cargar certificado PKCS#12
             byte[] certBytes = Base64Utils.decodificar(pkcs12Base64);
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
             keyStore.load(new ByteArrayInputStream(certBytes), password.toCharArray());
 
-            // 2. Obtener llave privada y cadena de certificados
             String alias = keyStore.aliases().nextElement();
             PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, password.toCharArray());
             Certificate[] certChain = keyStore.getCertificateChain(alias);
-            
+
             if (privateKey == null) {
                 return crearRespuestaError("No se pudo obtener la llave privada del certificado");
             }
             if (certChain == null || certChain.length == 0) {
                 return crearRespuestaError("No se pudo obtener la cadena de certificados");
             }
-            
-            // Extraer nombre del firmante del certificado
-            String nombreFirmante = extraerNombreFirmante(certChain[0]);
-            
-            // 3. Decodificar documento
+
+            // 2. Decodificar documento
             byte[] docBytes = Base64Utils.decodificar(documentoBase64);
-            
-            // 4. Parsear metadatos y configurar parámetros de firma con QR
+
+            // 3. Configurar parametros de firma con QR
             Properties params = new Properties();
-            
-            // Configurar firma con QR
             params.setProperty("typeSignature", "QR");
-            
-            // Valores por defecto para posición y tamaño del QR
+
             float qrPosX = 50f;
             float qrPosY = 50f;
             float qrAncho = 200f;
             float qrAlto = 100f;
-            
+
             if (jsonMetadata != null && !jsonMetadata.isEmpty()) {
                 try {
                     JsonObject metadata = new Gson().fromJson(jsonMetadata, JsonObject.class);
-                    
-                    // Metadatos de firma
+
                     if (metadata.has("razon")) {
                         params.setProperty("signingReason", metadata.get("razon").getAsString());
                     }
@@ -152,117 +115,83 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
                     if (metadata.has("identificacion")) {
                         params.setProperty("identificacion", metadata.get("identificacion").getAsString());
                     }
-                    
-                    // Metadatos del QR
                     if (metadata.has("infoQR")) {
                         params.setProperty("infoQR", metadata.get("infoQR").getAsString());
                     }
-                    
-                    // Posición y tamaño del QR
                     if (metadata.has("qrPagina")) {
                         int qrPagina = metadata.get("qrPagina").getAsInt();
                         if (qrPagina > 0) {
                             params.setProperty("page", String.valueOf(qrPagina));
                         }
                     }
-                    
-                    // Leer posición y tamaño personalizados
-                    if (metadata.has("qrPosX")) {
-                        qrPosX = metadata.get("qrPosX").getAsFloat();
-                    }
-                    if (metadata.has("qrPosY")) {
-                        qrPosY = metadata.get("qrPosY").getAsFloat();
-                    }
-                    if (metadata.has("qrAncho")) {
-                        qrAncho = metadata.get("qrAncho").getAsFloat();
-                    }
-                    if (metadata.has("qrAlto")) {
-                        qrAlto = metadata.get("qrAlto").getAsFloat();
-                    }
-                    
+                    if (metadata.has("qrPosX")) qrPosX = metadata.get("qrPosX").getAsFloat();
+                    if (metadata.has("qrPosY")) qrPosY = metadata.get("qrPosY").getAsFloat();
+                    if (metadata.has("qrAncho")) qrAncho = metadata.get("qrAncho").getAsFloat();
+                    if (metadata.has("qrAlto")) qrAlto = metadata.get("qrAlto").getAsFloat();
+
                 } catch (Exception e) {
-                    LOGGER.log(Level.WARNING, "Error al parsear metadatos JSON, se usarán valores por defecto: {0}", e.getMessage());
+                    LOGGER.log(Level.WARNING, "Error al parsear metadatos JSON: {0}", e.getMessage());
                 }
             }
-            
-            // 4.1 Extraer identificacion del certificado si no fue proporcionada
+
+            // 4. Extraer identificacion del certificado si no fue proporcionada
             if (params.getProperty("identificacion") == null || params.getProperty("identificacion").isEmpty()) {
                 try {
                     X509Certificate x509Cert = (X509Certificate) certChain[0];
                     DatosUsuario datosUsuario = CertEcUtils.getDatosUsuarios(x509Cert);
                     if (datosUsuario != null && datosUsuario.getCedula() != null && !datosUsuario.getCedula().isEmpty()) {
                         params.setProperty("identificacion", datosUsuario.getCedula());
-                        LOGGER.log(Level.INFO, "Identificacion extraida del certificado para TSA");
                     }
                 } catch (Exception e) {
                     LOGGER.log(Level.WARNING, "No se pudo extraer identificacion del certificado: {0}", e.getMessage());
                 }
             }
 
-            // Configurar posicion del QR usando los nombres correctos de la libreria
-            params.setProperty("PositionOnPageLowerLeftX", String.valueOf((int)qrPosX));
-            params.setProperty("PositionOnPageLowerLeftY", String.valueOf((int)qrPosY));
-            params.setProperty("PositionOnPageUpperRightX", String.valueOf((int)qrAncho));
-            params.setProperty("PositionOnPageUpperRightY", String.valueOf((int)qrAlto));
-            
-            // 5. Firmar digitalmente el documento con QR (la librería maneja todo)
+            params.setProperty("PositionOnPageLowerLeftX", String.valueOf((int) qrPosX));
+            params.setProperty("PositionOnPageLowerLeftY", String.valueOf((int) qrPosY));
+            params.setProperty("PositionOnPageUpperRightX", String.valueOf((int) qrAncho));
+            params.setProperty("PositionOnPageUpperRightY", String.valueOf((int) qrAlto));
+
+            // 5. Firmar
             PrivateKeySigner signer = new PrivateKeySigner(privateKey, DigestAlgorithm.SHA256);
             PadesBasic padesSigner = new PadesBasic(signer);
-            
-            // Convertir byte[] a InputStream para el método sign
-            ByteArrayInputStream inputStream = new ByteArrayInputStream(docBytes);
-            byte[] documentoFirmado = padesSigner.sign(inputStream, signer, certChain, params);
-            
-            // 6. Codificar y retornar
+            byte[] documentoFirmado = padesSigner.sign(new ByteArrayInputStream(docBytes), signer, certChain, params);
+
+            // 6. Respuesta
             String documentoFirmadoBase64 = Base64.getEncoder().encodeToString(documentoFirmado);
 
             JsonObject response = new JsonObject();
             response.addProperty("resultado", "OK");
             response.addProperty("mensaje", "Documento firmado con QR exitosamente");
             response.addProperty("documentoFirmado", documentoFirmadoBase64);
-            
             return new Gson().toJson(response);
-            
+
         } catch (IllegalArgumentException e) {
-            LOGGER.log(Level.SEVERE, "Error de formato en los datos: {0}", e.getMessage());
+            LOGGER.log(Level.SEVERE, "Error de formato: {0}", e.getMessage());
             return crearRespuestaError("Error de formato: " + e.getMessage());
         } catch (java.security.UnrecoverableKeyException e) {
-            LOGGER.log(Level.SEVERE, "Contraseña incorrecta: {0}", e.getMessage());
-            return crearRespuestaError("Contraseña del certificado incorrecta");
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error al procesar documento: {0}", e);
-            return crearRespuestaError("Error al procesar documento: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * Extrae el nombre común (CN) del certificado.
-     */
-    private String extraerNombreFirmante(Certificate cert) {
-        try {
-            if (cert instanceof X509Certificate) {
-                X509Certificate x509cert = (X509Certificate) cert;
-                String dn = x509cert.getSubjectDN().getName();
-                
-                // Buscar CN= en el DN
-                String[] parts = dn.split(",");
-                for (String part : parts) {
-                    part = part.trim();
-                    if (part.startsWith("CN=")) {
-                        return part.substring(3).trim();
-                    }
-                }
-                
-                // Si no encuentra CN, retornar el DN completo
-                return dn;
+            LOGGER.log(Level.SEVERE, "Clave incorrecta: {0}", e.getMessage());
+            return crearRespuestaError("La clave del certificado es incorrecta");
+        } catch (java.io.IOException e) {
+            String msg = e.getMessage() != null ? e.getMessage() : "";
+            if (msg.contains("keystore") || msg.contains("PKCS12") || msg.contains("password")) {
+                return crearRespuestaError("El archivo del certificado esta danado o la clave es incorrecta");
             }
-            return "Firmante desconocido";
+            LOGGER.log(Level.SEVERE, "Error de IO: {0}", e);
+            return crearRespuestaError("Error al procesar el documento: " + msg);
+        } catch (RuntimeException e) {
+            String msg = e.getMessage() != null ? e.getMessage() : "";
+            if (msg.contains("TSA")) {
+                return crearRespuestaError(msg);
+            }
+            LOGGER.log(Level.SEVERE, "Error al firmar: {0}", e);
+            return crearRespuestaError("Error al firmar documento: " + msg);
         } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Error al extraer nombre del firmante: {0}", e.getMessage());
-            return "Firmante desconocido";
+            LOGGER.log(Level.SEVERE, "Error inesperado: {0}", e);
+            return crearRespuestaError("Error interno al firmar documento. Intente nuevamente");
         }
     }
-    
+
     private String crearRespuestaError(String mensaje) {
         JsonObject error = new JsonObject();
         error.addProperty("resultado", "ERROR");

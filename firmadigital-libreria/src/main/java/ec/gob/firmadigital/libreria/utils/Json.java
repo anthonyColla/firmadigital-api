@@ -201,6 +201,7 @@ public class Json {
         jsonObjectDatosUsuario.addProperty("apellido", datosUsuario.getApellido());
         jsonObjectDatosUsuario.addProperty("institucion", datosUsuario.getInstitucion());
         jsonObjectDatosUsuario.addProperty("cargo", datosUsuario.getCargo());
+        jsonObjectDatosUsuario.addProperty("tipoCertificado", datosUsuario.getTipoCertificado());
         jsonObjectDatosUsuario.addProperty("certificadoDigitalValido", datosUsuario.isCertificadoDigitalValido());
         return jsonObjectDatosUsuario.toString();
     }

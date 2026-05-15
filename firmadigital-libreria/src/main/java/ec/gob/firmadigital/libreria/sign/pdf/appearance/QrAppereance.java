@@ -84,12 +84,16 @@ public class QrAppereance implements CustomAppearance {
         byte[] byteQR = null;
 
         // QR - Generar contenido del código QR
-        String text = "FIRMADO POR: " + nombreFirmante.trim() + "\n";
-        text = text + "RAZON: " + "Firmado digitalmente con Nexus Soluciones" + "\n";
-        text = text + "LOCALIZACION: " + "ECUADOR" + "\n";
-        text = text + "FECHA: " + signTime + "\n";
-        text = text + "VALIDAR CON: " + "https://firmador.solucionesnexus.com" + "\n";
-        text = text + infoQR;
+        StringBuilder sb = new StringBuilder();
+        sb.append("FIRMADO POR: ").append(nombreFirmante.trim()).append("\n");
+        sb.append("RAZON: ").append(reason != null && !reason.isEmpty() ? reason : "Firmado digitalmente con Nexus Soluciones").append("\n");
+        if (location != null && !location.isEmpty()) {
+            sb.append("LOCALIZACION: ").append(location).append("\n");
+        }
+        sb.append("FECHA: ").append(signTime).append("\n");
+        sb.append("VALIDAR CON: ").append("https://firmador.solucionesnexus.com").append("\n");
+        sb.append(infoQR);
+        String text = sb.toString();
 
         try {
             byteQR = QRCode.generateQR(text, (int) signaturePositionOnPage.getHeight(),

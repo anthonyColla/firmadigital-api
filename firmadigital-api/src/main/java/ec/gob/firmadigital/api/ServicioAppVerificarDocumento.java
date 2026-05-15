@@ -45,13 +45,6 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- * REST Web Service para verificar documentos firmados.
- * Usa la libreria de firma digital con verificacion completa incluyendo
- * sellado de tiempo (TSA), integridad de firma, y validacion de certificados.
- *
- * @author Christian Espinosa, Misael Fernandez
- */
 @Path("/appverificardocumento")
 public class ServicioAppVerificarDocumento extends RequestSizeFilter {
 
@@ -82,18 +75,17 @@ public class ServicioAppVerificarDocumento extends RequestSizeFilter {
 
             byte[] docBytes = Base64Utils.decodificar(documentoBase64);
 
-            // Extraer firmas del PDF
             PadesSigner padesSigner = new PadesSigner();
             List<SignInfo> signInfos = padesSigner.getSigners(docBytes);
 
-            // Verificacion completa con sellado de tiempo
             PdfReader pdfReader = new PdfReader(new ByteArrayInputStream(docBytes));
             Documento documento = Utils.pdfToDocumento(pdfReader, signInfos);
 
             if (documento.getCertificados() == null || documento.getCertificados().isEmpty()) {
                 JsonObject response = new JsonObject();
                 response.addProperty("resultado", "OK");
-                response.addProperty("firmaValida", false);
+                response.addProperty("firmasValidas", false);
+                response.addProperty("documentoIntegro", false);
                 response.addProperty("numeroFirmas", 0);
                 response.addProperty("mensaje", documento.getError() != null
                         ? documento.getError()
@@ -101,12 +93,10 @@ public class ServicioAppVerificarDocumento extends RequestSizeFilter {
                 return new Gson().toJson(response);
             }
 
-            // Construir respuesta completa
             JsonObject response = new JsonObject();
             response.addProperty("resultado", "OK");
-            response.addProperty("signValidate", documento.getSignValidate());
-            response.addProperty("docValidate", documento.getDocValidate());
-            response.addProperty("firmaValida", documento.getSignValidate());
+            response.addProperty("firmasValidas", documento.getSignValidate());
+            response.addProperty("documentoIntegro", documento.getDocValidate());
             response.addProperty("numeroFirmas", documento.getCertificados().size());
             if (documento.getError() != null) {
                 response.addProperty("error", documento.getError());
@@ -116,72 +106,83 @@ public class ServicioAppVerificarDocumento extends RequestSizeFilter {
             int firmaIndex = 1;
 
             for (Certificado cert : documento.getCertificados()) {
-                JsonObject firmaObj = new JsonObject();
-                firmaObj.addProperty("numeroFirma", firmaIndex++);
-                firmaObj.addProperty("issuedTo", cert.getIssuedTo());
-                firmaObj.addProperty("issuedBy", cert.getIssuedBy());
+                JsonObject f = new JsonObject();
+                f.addProperty("numeroFirma", firmaIndex++);
 
+                // Datos del firmante
+                f.addProperty("nombreCompleto", cert.getIssuedTo());
+                f.addProperty("entidadCertificadora", cert.getIssuedBy());
+
+                // Fechas del certificado
                 if (cert.getValidFrom() != null) {
-                    firmaObj.addProperty("validFrom", fmtCal(cert.getValidFrom()));
+                    f.addProperty("fechaEmision", fmtCal(cert.getValidFrom()));
                 }
                 if (cert.getValidTo() != null) {
-                    firmaObj.addProperty("validTo", fmtCal(cert.getValidTo()));
+                    f.addProperty("fechaExpiracion", fmtCal(cert.getValidTo()));
                 }
                 if (cert.getSignGenerated() != null) {
-                    firmaObj.addProperty("fechaFirma", fmtCal(cert.getSignGenerated()));
-                }
-                if (cert.getRevocated() != null) {
-                    firmaObj.addProperty("revocated", fmtCal(cert.getRevocated()));
+                    f.addProperty("fechaFirmado", fmtCal(cert.getSignGenerated()));
                 }
 
-                firmaObj.addProperty("certificadoValido", cert.getCertificateValidated());
-                firmaObj.addProperty("signVerify", cert.getSignVerify());
-                firmaObj.addProperty("docReason", cert.getDocReason());
-                firmaObj.addProperty("docLocation", cert.getDocLocation());
-                firmaObj.addProperty("keyUsages", cert.getKeyUsages());
+                // Revocacion
+                if (cert.getRevocated() != null) {
+                    f.addProperty("fechaRevocacion", fmtCal(cert.getRevocated()));
+                    f.addProperty("revocado", true);
+                } else {
+                    f.addProperty("revocado", false);
+                }
+
+                // Validaciones
+                f.addProperty("certificadoVigente", cert.getCertificateValidated());
+                f.addProperty("integridadFirma", cert.getSignVerify());
+
+                // Metadatos de firma
+                f.addProperty("razon", cert.getDocReason());
+                f.addProperty("localizacion", cert.getDocLocation());
+                f.addProperty("usosLlave", cert.getKeyUsages());
 
                 // Sellado de Tiempo (TSA)
-                firmaObj.addProperty("docValidTimeStamp", cert.getDocValidTimeStamp());
+                f.addProperty("tieneSelladoTiempo", cert.getDocValidTimeStamp());
                 if (cert.getDocTimeStamp() != null) {
-                    firmaObj.addProperty("docTimeStamp", fmtDate(cert.getDocTimeStamp()));
-                    firmaObj.addProperty("docTimeStampIssuedBy", cert.getDocTimeStampIssuedBy());
-                    firmaObj.addProperty("selladoTiempoFecha", fmtDate(cert.getDocTimeStamp()));
-                    firmaObj.addProperty("selladoTiempoEmitidoPor", cert.getDocTimeStampIssuedBy());
-                    firmaObj.addProperty("selladoTiempoValido", cert.getDocValidTimeStamp());
+                    JsonObject tsa = new JsonObject();
+                    tsa.addProperty("fecha", fmtDate(cert.getDocTimeStamp()));
+                    tsa.addProperty("emitidoPor", cert.getDocTimeStampIssuedBy());
+                    tsa.addProperty("valido", cert.getDocValidTimeStamp());
                     if (cert.getCnTimeStamp() != null) {
-                        firmaObj.addProperty("cnTimeStamp", cert.getCnTimeStamp());
+                        tsa.addProperty("autoridad", cert.getCnTimeStamp());
                     }
+                    f.add("selladoTiempo", tsa);
                 }
 
                 // Datos del usuario/firmante
                 DatosUsuario datos = cert.getDatosUsuario();
                 if (datos != null) {
-                    JsonObject datosObj = new JsonObject();
-                    datosObj.addProperty("cedula", datos.getCedula());
-                    datosObj.addProperty("nombre", datos.getNombre());
-                    datosObj.addProperty("apellido", datos.getApellido());
-                    datosObj.addProperty("institucion", datos.getInstitucion());
-                    datosObj.addProperty("cargo", datos.getCargo());
-                    datosObj.addProperty("certificadoDigitalValido", datos.isCertificadoDigitalValido());
-                    firmaObj.add("datosUsuario", datosObj);
+                    JsonObject d = new JsonObject();
+                    d.addProperty("cedula", datos.getCedula());
+                    d.addProperty("nombre", datos.getNombre());
+                    d.addProperty("apellido", datos.getApellido());
+                    d.addProperty("institucion", datos.getInstitucion());
+                    d.addProperty("cargo", datos.getCargo());
+                    d.addProperty("tipoCertificado", datos.getTipoCertificado());
+                    d.addProperty("certificadoDigitalValido", datos.isCertificadoDigitalValido());
+                    f.add("datosUsuario", d);
                 }
 
-                firmasArray.add(firmaObj);
+                firmasArray.add(f);
             }
 
             response.add("firmas", firmasArray);
-
             return new Gson().toJson(response);
 
         } catch (IllegalArgumentException e) {
-            LOGGER.log(Level.SEVERE, "Error de formato en los datos: {0}", e.getMessage());
-            return crearRespuestaError("Error de formato: El documento no esta correctamente codificado en Base64");
+            LOGGER.log(Level.SEVERE, "Error de formato: {0}", e.getMessage());
+            return crearRespuestaError("El documento no esta correctamente codificado en Base64");
         } catch (ec.gob.firmadigital.libreria.exceptions.InvalidFormatException e) {
             LOGGER.log(Level.SEVERE, "Formato de documento invalido: {0}", e.getMessage());
             return crearRespuestaError("El documento no es un PDF valido o no contiene firmas reconocibles");
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error al verificar documento: {0}", e);
-            return crearRespuestaError("Error al verificar documento: " + e.getMessage());
+            return crearRespuestaError("Error interno al verificar documento. Intente nuevamente");
         }
     }
 
@@ -189,7 +190,7 @@ public class ServicioAppVerificarDocumento extends RequestSizeFilter {
         JsonObject error = new JsonObject();
         error.addProperty("resultado", "ERROR");
         error.addProperty("mensaje", mensaje);
-        error.addProperty("firmaValida", false);
+        error.addProperty("firmasValidas", false);
         return new Gson().toJson(error);
     }
 }
