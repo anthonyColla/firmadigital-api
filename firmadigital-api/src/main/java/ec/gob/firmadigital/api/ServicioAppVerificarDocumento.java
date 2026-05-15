@@ -159,10 +159,7 @@ public class ServicioAppVerificarDocumento extends RequestSizeFilter {
                 if (datos != null) {
                     JsonObject d = new JsonObject();
                     d.addProperty("cedula", datos.getCedula());
-                    d.addProperty("nombre", datos.getNombre());
-                    d.addProperty("apellido", datos.getApellido());
-                    d.addProperty("institucion", datos.getInstitucion());
-                    d.addProperty("cargo", datos.getCargo());
+                    d.addProperty("nombreCompleto", datos.getNombre());
                     d.addProperty("tipoCertificado", datos.getTipoCertificado());
                     d.addProperty("certificadoDigitalValido", datos.isCertificadoDigitalValido());
                     f.add("datosUsuario", d);

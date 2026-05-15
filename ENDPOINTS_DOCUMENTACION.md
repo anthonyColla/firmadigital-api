@@ -178,7 +178,7 @@ POST /appverificardocumento
   "firmas": [
     {
       "numeroFirma": 1,
-      "nombreCompleto": "LUIS XAVIER GONZALEZ JIMENEZ",
+      "nombreCompleto": "CARLOS ANDRES MARTINEZ LOPEZ",
       "entidadCertificadora": "LAZZATE CIA. LTDA",
       "fechaEmision": "2025-08-18T14:38:07.000-05:00",
       "fechaExpiracion": "2026-08-18T14:38:07.000-05:00",
@@ -197,11 +197,8 @@ POST /appverificardocumento
         "autoridad": "Sello de tiempo acreditado de MINTEL - TSU02"
       },
       "datosUsuario": {
-        "cedula": "1752549467",
-        "nombre": "LUIS XAVIER",
-        "apellido": "GONZALEZ JIMENEZ",
-        "institucion": "",
-        "cargo": "",
+        "cedula": "0901234567",
+        "nombreCompleto": "CARLOS ANDRES MARTINEZ LOPEZ",
         "tipoCertificado": "Persona Natural (EXT)",
         "certificadoDigitalValido": true
       }
@@ -221,7 +218,7 @@ POST /appverificardocumento
   "firmas": [
     {
       "numeroFirma": 1,
-      "nombreCompleto": "JUAN PEREZ",
+      "nombreCompleto": "MARIA FERNANDA TORRES RIVAS",
       "entidadCertificadora": "SECURITY DATA",
       "fechaEmision": "2025-01-15T10:00:00.000-05:00",
       "fechaExpiracion": "2027-01-15T10:00:00.000-05:00",
@@ -234,11 +231,8 @@ POST /appverificardocumento
       "usosLlave": "Firma Electronica, No Repudio, ",
       "tieneSelladoTiempo": false,
       "datosUsuario": {
-        "cedula": "1234567890",
-        "nombre": "JUAN",
-        "apellido": "PEREZ",
-        "institucion": "",
-        "cargo": "",
+        "cedula": "1710987654",
+        "nombreCompleto": "MARIA FERNANDA TORRES RIVAS",
         "tipoCertificado": "",
         "certificadoDigitalValido": true
       }
@@ -270,7 +264,7 @@ POST /appverificardocumento
   "firmas": [
     {
       "numeroFirma": 1,
-      "nombreCompleto": "JUAN PEREZ",
+      "nombreCompleto": "MARIA FERNANDA TORRES RIVAS",
       "entidadCertificadora": "LAZZATE CIA. LTDA",
       "fechaFirmado": "2026-05-15T11:00:00.000-05:00",
       "fechaRevocacion": "2026-04-01T00:00:00.000-05:00",
@@ -279,9 +273,8 @@ POST /appverificardocumento
       "integridadFirma": true,
       "tieneSelladoTiempo": false,
       "datosUsuario": {
-        "cedula": "1234567890",
-        "nombre": "JUAN",
-        "apellido": "PEREZ",
+        "cedula": "1710987654",
+        "nombreCompleto": "MARIA FERNANDA TORRES RIVAS",
         "certificadoDigitalValido": false
       }
     }
@@ -331,11 +324,8 @@ POST /appverificardocumento
 | Campo | Tipo | Descripcion |
 |-------|------|-------------|
 | `cedula` | String | Cedula de identidad |
-| `nombre` | String | Nombre(s) |
-| `apellido` | String | Apellido(s) |
-| `institucion` | String | Empresa/institucion |
-| `cargo` | String | Cargo |
-| `tipoCertificado` | String | Tipo (Persona Natural, Juridica, etc) |
+| `nombreCompleto` | String | Nombre completo del firmante |
+| `tipoCertificado` | String | Tipo (Persona Natural (EXT), Persona Juridica (EXT), etc) |
 | `certificadoDigitalValido` | Boolean | CA ecuatoriana reconocida |
 
 ---
@@ -374,9 +364,9 @@ POST /appvalidarcertificadodigital
     "detalle": "No revocado"
   },
   "datosUsuario": {
-    "cedula": "1752549467",
-    "nombre": "LUIS XAVIER",
-    "apellido": "GONZALEZ JIMENEZ",
+    "cedula": "0901234567",
+    "nombre": "CARLOS ANDRES",
+    "apellido": "MARTINEZ LOPEZ",
     "institucion": "",
     "cargo": "",
     "tipoCertificado": "Persona Natural (EXT)",
