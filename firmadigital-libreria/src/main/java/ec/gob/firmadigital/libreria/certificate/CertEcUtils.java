@@ -661,20 +661,42 @@ public class CertEcUtils {
                             + certificadoPersonaJuridica.getSegundoApellido());
                 }
             }
-            // Fallback: si cedula vacia, extraer de Subject DN (SERIALNUMBER)
+            // Fallback: si cedula vacia, extraer todo de Subject DN
             if (datosUsuario.getCedula() == null || datosUsuario.getCedula().isEmpty()) {
                 try {
                     org.bouncycastle.asn1.x500.X500Name subjectName = new org.bouncycastle.cert.jcajce.JcaX509CertificateHolder(certificado).getSubject();
+                    // Cedula
                     String serialNumber = CertUtils.getSubjectFieldByOID(subjectName, org.bouncycastle.asn1.x500.style.BCStyle.SERIALNUMBER);
                     if (serialNumber != null && !serialNumber.isEmpty()) {
                         datosUsuario.setCedula(serialNumber);
                     }
-                    // Si nombre es solo CN (sin separar), intentar GIVENNAME + SURNAME
+                    // Nombre y apellido
                     String givenName = CertUtils.getSubjectFieldByOID(subjectName, org.bouncycastle.asn1.x500.style.BCStyle.GIVENNAME);
                     String surname = CertUtils.getSubjectFieldByOID(subjectName, org.bouncycastle.asn1.x500.style.BCStyle.SURNAME);
                     if (givenName != null && !givenName.isEmpty()) {
                         datosUsuario.setNombre(givenName);
                         datosUsuario.setApellido(surname != null ? surname : "");
+                    }
+                    // Institucion (Organization)
+                    if (datosUsuario.getInstitucion() == null || datosUsuario.getInstitucion().isEmpty()) {
+                        String org = CertUtils.getSubjectFieldByOID(subjectName, org.bouncycastle.asn1.x500.style.BCStyle.O);
+                        if (org != null && !org.isEmpty()) {
+                            datosUsuario.setInstitucion(org);
+                        }
+                    }
+                    // Cargo (Title)
+                    if (datosUsuario.getCargo() == null || datosUsuario.getCargo().isEmpty()) {
+                        String title = CertUtils.getSubjectFieldByOID(subjectName, org.bouncycastle.asn1.x500.style.BCStyle.T);
+                        if (title != null && !title.isEmpty()) {
+                            datosUsuario.setCargo(title);
+                        }
+                    }
+                    // Unidad organizacional (OU) como cargo alternativo
+                    if (datosUsuario.getCargo() == null || datosUsuario.getCargo().isEmpty()) {
+                        String ou = CertUtils.getSubjectFieldByOID(subjectName, org.bouncycastle.asn1.x500.style.BCStyle.OU);
+                        if (ou != null && !ou.isEmpty()) {
+                            datosUsuario.setCargo(ou);
+                        }
                     }
                 } catch (Exception e) {
                     LOGGER.log(Level.WARNING, "Error extrayendo datos de Subject DN para Lazzate: {0}", e.getMessage());
