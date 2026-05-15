@@ -814,19 +814,19 @@ public class Utils {
                     //certificado digital sin ser revocado, integridad de la firma, dentro de fecha de figencia, válido por CA
                     boolean revocado = validarFirma(certificado.getValidFrom(), certificado.getValidTo(), certificado.getSignGenerated(), certificado.getRevocated());
                     if (pdf) {
-                        if (!revocado || !certificado.getSignVerify() || !certificado.getCertificateValidated() || !certificado.getDatosUsuario().isCertificadoDigitalValido()) {
+                        if (!revocado || !certificado.getSignVerify() || !certificado.getCertificateValidated()) {
                             retorno = false;
                             break;
                         }
                     } else {
-                        if (!revocado || !certificado.getCertificateValidated() || !certificado.getDatosUsuario().isCertificadoDigitalValido()) {
+                        if (!revocado || !certificado.getCertificateValidated()) {
                             retorno = false;
                             break;
                         }
                     }
                 } else {// sellos de tiempo
                     //dentro de fecha de figencia, válido por CA
-                    if (!certificado.getCertificateValidated() || !certificado.getDatosUsuario().isCertificadoDigitalValido()) {
+                    if (!certificado.getCertificateValidated()) {
                         retorno = false;
                         break;
                     }
