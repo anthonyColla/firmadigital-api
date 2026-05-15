@@ -84,9 +84,11 @@ POST /appfirmardocumento
 **Errores:**
 ```json
 { "resultado": "ERROR", "mensaje": "La clave del certificado es incorrecta" }
-{ "resultado": "ERROR", "mensaje": "El archivo del certificado esta danado o la clave es incorrecta" }
+{ "resultado": "ERROR", "mensaje": "La clave del certificado es requerida" }
+{ "resultado": "ERROR", "mensaje": "El archivo del certificado esta danado o no es un PKCS#12 valido" }
 { "resultado": "ERROR", "mensaje": "Error de autenticacion TSA (401): Credenciales incorrectas." }
 { "resultado": "ERROR", "mensaje": "Error de conflicto TSA (409): Hash duplicado." }
+{ "resultado": "ERROR", "mensaje": "Error interno al firmar documento. Intente nuevamente" }
 ```
 
 ---
@@ -424,7 +426,8 @@ POST /appvalidarcertificadodigital
 **Errores:**
 ```json
 { "resultado": "ERROR", "mensaje": "La clave del certificado es incorrecta", "vigente": false }
-{ "resultado": "ERROR", "mensaje": "El archivo del certificado esta danado o la clave es incorrecta", "vigente": false }
+{ "resultado": "ERROR", "mensaje": "El archivo del certificado esta danado o no es un PKCS#12 valido", "vigente": false }
+{ "resultado": "ERROR", "mensaje": "Error interno al validar certificado. Intente nuevamente", "vigente": false }
 ```
 
 ---
@@ -514,13 +517,14 @@ GET /version
 }
 ```
 
-**Errores comunes firma:**
+**Errores comunes:**
 
 | Mensaje | Causa |
 |---------|-------|
-| `La clave del certificado es incorrecta` | Password erroneo |
-| `El archivo del certificado esta danado o la clave es incorrecta` | .p12 corrupto |
-| `Error de autenticacion TSA (401): Credenciales incorrectas.` | Cedula rechazada por TSA |
+| `La clave del certificado es incorrecta` | Clave erronea |
+| `La clave del certificado es requerida` | Parametro `password` vacio |
+| `El archivo del certificado esta danado o no es un PKCS#12 valido` | .p12 corrupto o formato invalido |
+| `Error de autenticacion TSA (401): Credenciales incorrectas.` | Cedula rechazada por servidor TSA |
 | `Error de conflicto TSA (409): Hash duplicado.` | Documento ya sellado |
 | `El documento no esta correctamente codificado en Base64` | Base64 invalido |
 | `Error interno al firmar documento. Intente nuevamente` | Error inesperado |

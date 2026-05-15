@@ -178,13 +178,13 @@ public class ServicioAppValidarCertificadoDigital extends RequestSizeFilter {
         } catch (IllegalArgumentException e) {
             LOGGER.log(Level.SEVERE, "Error de formato: {0}", e.getMessage());
             return crearRespuestaError("El certificado no esta correctamente codificado en Base64");
-        } catch (java.security.UnrecoverableKeyException e) {
-            LOGGER.log(Level.SEVERE, "Clave incorrecta: {0}", e.getMessage());
-            return crearRespuestaError("La clave del certificado es incorrecta");
         } catch (java.io.IOException e) {
-            String msg = e.getMessage() != null ? e.getMessage() : "";
-            if (msg.contains("keystore") || msg.contains("PKCS12") || msg.contains("password")) {
-                return crearRespuestaError("El archivo del certificado esta danado o la clave es incorrecta");
+            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            if (msg.contains("password") || msg.contains("mac check") || msg.contains("mac verify")) {
+                return crearRespuestaError("La clave del certificado es incorrecta");
+            }
+            if (msg.contains("keystore") || msg.contains("pkcs12") || msg.contains("der")) {
+                return crearRespuestaError("El archivo del certificado esta danado o no es un PKCS#12 valido");
             }
             LOGGER.log(Level.SEVERE, "Error de IO: {0}", e);
             return crearRespuestaError("Error al procesar el certificado");
