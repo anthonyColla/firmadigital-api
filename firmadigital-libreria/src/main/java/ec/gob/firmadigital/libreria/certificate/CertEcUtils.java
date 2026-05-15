@@ -679,9 +679,9 @@ public class CertEcUtils {
                     }
                     // Institucion (Organization)
                     if (datosUsuario.getInstitucion() == null || datosUsuario.getInstitucion().isEmpty()) {
-                        String org = CertUtils.getSubjectFieldByOID(subjectName, org.bouncycastle.asn1.x500.style.BCStyle.O);
-                        if (org != null && !org.isEmpty()) {
-                            datosUsuario.setInstitucion(org);
+                        String organization = CertUtils.getSubjectFieldByOID(subjectName, org.bouncycastle.asn1.x500.style.BCStyle.O);
+                        if (organization != null && !organization.isEmpty()) {
+                            datosUsuario.setInstitucion(organization);
                         }
                     }
                     // Cargo (Title)
