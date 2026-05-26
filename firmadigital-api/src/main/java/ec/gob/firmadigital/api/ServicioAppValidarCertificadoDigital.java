@@ -129,8 +129,8 @@ public class ServicioAppValidarCertificadoDigital extends RequestSizeFilter {
             response.addProperty("fechaEmision", fmtDate(cert.getNotBefore()));
             response.addProperty("fechaExpiracion", fmtDate(cert.getNotAfter()));
             response.addProperty("algoritmo", cert.getSigAlgName());
-            response.addProperty("subject", cert.getSubjectX500Principal().getName());
-            response.addProperty("issuer", cert.getIssuerX500Principal().getName());
+            response.addProperty("subject", cert.getSubjectDN().getName());
+            response.addProperty("issuer", cert.getIssuerDN().getName());
 
             // Dias hasta expiracion
             long diasHastaExpiracion = calcularDiasHastaExpiracion(cert.getNotAfter());
