@@ -459,6 +459,7 @@ public class Utils {
                                                     certificado.getDatosUsuario().setApellido("");
                                                     certificado.setDocTimeStamp(tsToken.getTimeStampInfo().getGenTime());
                                                     certificado.setDocTimeStampIssuedBy(CertEcUtils.getNombreCA(x509Certificate));
+                                                    certificado.setCnTimeStamp(getCN(x509Certificate));
                                                     certificado.setDatosUsuario(infoCertificado(certificado.getDatosUsuario(), signInfo));
                                                     try {
                                                         if (verifySignature(x509Certificate)) {
@@ -635,20 +636,36 @@ public class Utils {
     }
 
     public static DatosUsuario infoCertificado(DatosUsuario datosUsuario, SignInfo signInfo) {
-        //extraer información del certificado
-        X500Principal issuerX500Principal = signInfo.getCerts()[0].getIssuerX500Principal();//CA
-        X500Name issuerX500name = new X500Name(issuerX500Principal.getName());
-        X500Principal subjectX500Principal = signInfo.getCerts()[0].getSubjectX500Principal();//firmante
+        X500Principal subjectX500Principal = signInfo.getCerts()[0].getSubjectX500Principal();
         X500Name subjectX500name = new X500Name(subjectX500Principal.getName());
-        String cedula = "", nombre = "", entidadCertificadora = "";
         try {
-            nombre = subjectX500name.getRDNs(BCStyle.CN)[0].getFirst().getValue().toString();//CommonName
-            cedula = subjectX500name.getRDNs(BCStyle.SERIALNUMBER)[0].getFirst().getValue().toString();//SerialNumber
-            entidadCertificadora = issuerX500name.getRDNs(BCStyle.O)[0].getFirst().getValue().toString();//OrganizationName
-        } catch (java.lang.ArrayIndexOutOfBoundsException aioobe) {
+            // Cedula (SERIALNUMBER)
+            if (subjectX500name.getRDNs(BCStyle.SERIALNUMBER).length > 0) {
+                datosUsuario.setCedula(subjectX500name.getRDNs(BCStyle.SERIALNUMBER)[0].getFirst().getValue().toString());
+            }
+            // Nombre (GIVENNAME o CN como fallback)
+            if (subjectX500name.getRDNs(BCStyle.GIVENNAME).length > 0) {
+                datosUsuario.setNombre(subjectX500name.getRDNs(BCStyle.GIVENNAME)[0].getFirst().getValue().toString());
+            } else if (subjectX500name.getRDNs(BCStyle.CN).length > 0) {
+                datosUsuario.setNombre(subjectX500name.getRDNs(BCStyle.CN)[0].getFirst().getValue().toString());
+            }
+            // Apellido (SURNAME)
+            if (subjectX500name.getRDNs(BCStyle.SURNAME).length > 0) {
+                datosUsuario.setApellido(subjectX500name.getRDNs(BCStyle.SURNAME)[0].getFirst().getValue().toString());
+            }
+            // Institucion (O = Organization)
+            if (subjectX500name.getRDNs(BCStyle.O).length > 0) {
+                datosUsuario.setInstitucion(subjectX500name.getRDNs(BCStyle.O)[0].getFirst().getValue().toString());
+            }
+            // Cargo (T = Title, fallback OU)
+            if (subjectX500name.getRDNs(BCStyle.T).length > 0) {
+                datosUsuario.setCargo(subjectX500name.getRDNs(BCStyle.T)[0].getFirst().getValue().toString());
+            } else if (subjectX500name.getRDNs(BCStyle.OU).length > 0) {
+                datosUsuario.setCargo(subjectX500name.getRDNs(BCStyle.OU)[0].getFirst().getValue().toString());
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Error extrayendo datos del Subject DN: {0}", e.getMessage());
         }
-        datosUsuario.setCedula(cedula);
-        datosUsuario.setNombre(nombre);
         return datosUsuario;
     }
 
@@ -797,19 +814,19 @@ public class Utils {
                     //certificado digital sin ser revocado, integridad de la firma, dentro de fecha de figencia, válido por CA
                     boolean revocado = validarFirma(certificado.getValidFrom(), certificado.getValidTo(), certificado.getSignGenerated(), certificado.getRevocated());
                     if (pdf) {
-                        if (!revocado || !certificado.getSignVerify() || !certificado.getCertificateValidated() || !certificado.getDatosUsuario().isCertificadoDigitalValido()) {
+                        if (!revocado || !certificado.getSignVerify() || !certificado.getCertificateValidated()) {
                             retorno = false;
                             break;
                         }
                     } else {
-                        if (!revocado || !certificado.getCertificateValidated() || !certificado.getDatosUsuario().isCertificadoDigitalValido()) {
+                        if (!revocado || !certificado.getCertificateValidated()) {
                             retorno = false;
                             break;
                         }
                     }
                 } else {// sellos de tiempo
                     //dentro de fecha de figencia, válido por CA
-                    if (!certificado.getCertificateValidated() || !certificado.getDatosUsuario().isCertificadoDigitalValido()) {
+                    if (!certificado.getCertificateValidated()) {
                         retorno = false;
                         break;
                     }

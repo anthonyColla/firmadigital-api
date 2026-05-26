@@ -82,35 +82,46 @@ public class JwtAuthenticationFilter implements ContainerRequestFilter {
     }
     
     /**
-     * Intenta extraer el token JWT del cuerpo de la petición (parámetro jwt).
-     * Lee el body una sola vez como byte[] para evitar doble copia en memoria.
+     * Intenta extraer el token JWT del cuerpo de la peticion (parametro jwt).
+     * Lee solo los primeros bytes necesarios para encontrar el parametro jwt,
+     * evitando cargar PDFs completos en memoria solo para autenticacion.
      */
     private String extractTokenFromBody(ContainerRequestContext requestContext) {
         try {
-            // Solo procesar si es form-data
             MediaType mediaType = requestContext.getMediaType();
             if (mediaType == null || !mediaType.isCompatible(MediaType.APPLICATION_FORM_URLENCODED_TYPE)) {
                 return null;
             }
 
-            // Leer el cuerpo una sola vez como bytes (evita la doble copia String + byte[])
             byte[] bodyBytes = requestContext.getEntityStream().readAllBytes();
-
-            // Restaurar el stream para que el endpoint pueda leerlo
             requestContext.setEntityStream(new ByteArrayInputStream(bodyBytes));
 
-            // Parsear el cuerpo para extraer el parámetro jwt
-            String body = new String(bodyBytes, StandardCharsets.UTF_8);
-            if (body.contains("jwt=")) {
-                String[] params = body.split("&");
-                for (String param : params) {
-                    if (param.startsWith("jwt=")) {
-                        String token = param.substring(4);
-                        // Decodificar URL encoding si es necesario
-                        token = java.net.URLDecoder.decode(token, StandardCharsets.UTF_8);
-                        LOGGER.log(Level.FINE, "Token JWT encontrado en el cuerpo de la petición");
-                        return token;
-                    }
+            // Buscar jwt= solo en los primeros 4KB (tokens JWT nunca son mas grandes)
+            int searchLimit = Math.min(bodyBytes.length, 4096);
+            String headerPortion = new String(bodyBytes, 0, searchLimit, StandardCharsets.UTF_8);
+
+            // Si jwt= no esta en los primeros 4KB, buscar al inicio de cada parametro &jwt=
+            if (!headerPortion.contains("jwt=")) {
+                // Buscar en todo el body pero solo la posicion, no convertir todo
+                String fullBody = new String(bodyBytes, StandardCharsets.UTF_8);
+                int jwtIdx = fullBody.indexOf("jwt=");
+                if (jwtIdx == -1) {
+                    return null;
+                }
+                // Extraer solo el valor del parametro jwt
+                int endIdx = fullBody.indexOf('&', jwtIdx);
+                String jwtParam = endIdx != -1
+                        ? fullBody.substring(jwtIdx + 4, endIdx)
+                        : fullBody.substring(jwtIdx + 4);
+                return java.net.URLDecoder.decode(jwtParam, StandardCharsets.UTF_8);
+            }
+
+            // jwt= encontrado en los primeros 4KB
+            String[] params = headerPortion.split("&");
+            for (String param : params) {
+                if (param.startsWith("jwt=")) {
+                    String token = param.substring(4);
+                    return java.net.URLDecoder.decode(token, StandardCharsets.UTF_8);
                 }
             }
 
