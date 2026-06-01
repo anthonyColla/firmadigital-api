@@ -18,10 +18,12 @@
 package ec.gob.firmadigital.libreria.sign.pdf.appearance;
 
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.io.InputStream;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.logging.Logger;
 
+import com.itextpdf.io.image.ImageData;
 import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.geom.Rectangle;
@@ -30,7 +32,6 @@ import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
 import com.itextpdf.kernel.pdf.xobject.PdfFormXObject;
 import com.itextpdf.layout.Canvas;
 import com.itextpdf.layout.element.Div;
-import com.itextpdf.layout.element.Image;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Text;
 import com.itextpdf.layout.properties.HorizontalAlignment;
@@ -56,10 +57,10 @@ public class QrAppereance implements CustomAppearance {
         this.reason = reason;
         this.location = location;
         
-        // Si signTime es null o vacío, generar fecha actual
+        // Si signTime es null o vacío, generar fecha actual en hora internacional (UTC)
         if (signTime == null || signTime.trim().isEmpty()) {
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-            this.signTime = sdf.format(new Date());
+            this.signTime = ZonedDateTime.now(java.time.ZoneOffset.UTC)
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"));
         } else {
             this.signTime = signTime;
         }
@@ -80,9 +81,6 @@ public class QrAppereance implements CustomAppearance {
         PdfFont fontCourier = loadFont("fonts/courier.ttf");
         PdfFont fontCourierBold = loadFont("fonts/courier-bold.ttf");
 
-        // Imagen
-        byte[] byteQR = null;
-
         // QR - Generar contenido del código QR
         StringBuilder sb = new StringBuilder();
         sb.append("FIRMADO POR: ").append(nombreFirmante.trim()).append("\n");
@@ -95,6 +93,7 @@ public class QrAppereance implements CustomAppearance {
         sb.append(infoQR);
         String text = sb.toString();
 
+        byte[] byteQR = null;
         try {
             byteQR = QRCode.generateQR(text, (int) signaturePositionOnPage.getHeight(),
                     (int) signaturePositionOnPage.getHeight());
@@ -102,28 +101,53 @@ public class QrAppereance implements CustomAppearance {
             LOGGER.log(Level.WARNING, "Error al generar QR: {0}", e);
         }
 
-        // QR - Definir rectángulos para QR y texto
-        Rectangle dataRect = new Rectangle(0, 0, signaturePositionOnPage.getWidth() / 3,
-                signaturePositionOnPage.getHeight());
-
-        // Aumentar separación entre QR y texto (ajustar el valor de división para más o menos espacio)
-        float separacion = signaturePositionOnPage.getWidth() / 2.8f;
-        Rectangle signatureRect = new Rectangle(separacion, 0,
-                signaturePositionOnPage.getWidth() - separacion, signaturePositionOnPage.getHeight());
-
-        Div imageDiv = new Div();
-        imageDiv.setHeight(dataRect.getHeight());
-        imageDiv.setWidth(dataRect.getWidth());
-        imageDiv.setVerticalAlignment(VerticalAlignment.MIDDLE);
-        imageDiv.setHorizontalAlignment(HorizontalAlignment.CENTER);
-
-        Image image = new Image(ImageDataFactory.create(byteQR));
-        image.setAutoScale(true);
-        imageDiv.add(image);
-
-        try (Canvas imageLayoutCanvas = new Canvas(canvas, dataRect)) {
-            imageLayoutCanvas.add(imageDiv);
+        // Cargar logo Nexus desde resources
+        byte[] logoBytes = null;
+        try (InputStream logoStream = getClass().getClassLoader().getResourceAsStream("images/logo-nexus.png")) {
+            if (logoStream != null) {
+                logoBytes = logoStream.readAllBytes();
+            } else {
+                LOGGER.log(Level.WARNING, "No se encontró logo-nexus.png en resources/images/");
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Error al cargar logo: {0}", e.getMessage());
         }
+
+        float totalWidth = signaturePositionOnPage.getWidth();
+        float totalHeight = signaturePositionOnPage.getHeight();
+        float leftWidth = totalWidth / 3;
+        float gap = 2f;
+
+        // Logo aspect ratio: 135x37 → ratio = 37/135 = 0.274
+        // logoH = qrSide * 0.274
+        // Necesitamos: qrSide + gap + logoH <= totalHeight
+        // qrSide + gap + qrSide * 0.274 <= totalHeight
+        // qrSide * 1.274 <= totalHeight - gap
+        // qrSide <= (totalHeight - gap) / 1.274
+        float logoRatio = 37f / 135f; // alto/ancho del logo
+        float qrSide = Math.min(leftWidth, (totalHeight - gap) / (1f + logoRatio));
+        float logoDrawW = qrSide;
+        float logoDrawH = qrSide * logoRatio;
+
+        // Posiciones: logo abajo (y=0), QR arriba (y=logoDrawH+gap)
+        float qrY = logoDrawH + gap;
+
+        // QR — cuadrado, dibujo directo
+        if (byteQR != null) {
+            ImageData qrData = ImageDataFactory.create(byteQR);
+            canvas.addImageWithTransformationMatrix(qrData, qrSide, 0, 0, qrSide, 0, qrY);
+        }
+
+        // Logo — mismo ancho que QR, en y=0
+        if (logoBytes != null) {
+            ImageData logoData = ImageDataFactory.create(logoBytes);
+            canvas.addImageWithTransformationMatrix(logoData, logoDrawW, 0, 0, logoDrawH, 0, 0);
+        }
+
+        // Lado derecho: nombre arriba + fecha abajo — pegado al QR
+        float separacion = qrSide + 2.5f;
+        Rectangle signatureRect = new Rectangle(separacion, 0,
+                totalWidth - separacion, totalHeight);
 
         Div textDiv = new Div();
         textDiv.setHeight(signatureRect.getHeight());
@@ -132,11 +156,7 @@ public class QrAppereance implements CustomAppearance {
         textDiv.setHorizontalAlignment(HorizontalAlignment.LEFT);
         textDiv.setPaddingLeft(2f);
 
-        Text validar = new Text("Validar únicamente con Nexus Soluciones.");
-        Paragraph pValidar = new Paragraph().add(validar).setFont(fontCourier).setMargin(0).setMultipliedLeading(1.0f)
-                .setFontSize(3.25f);
-        textDiv.add(pValidar);
-
+        // Nombre del firmante (arriba)
         Text firmado = new Text("Firmado electrónicamente por:");
         Paragraph pFirmado = new Paragraph().add(firmado).setFont(fontCourier).setMargin(0).setMultipliedLeading(1.0f)
                 .setFontSize(3.25f);
@@ -146,6 +166,12 @@ public class QrAppereance implements CustomAppearance {
         Paragraph pNombre = new Paragraph().add(contenido).setFont(fontCourierBold).setMargin(0).setMultipliedLeading(0.9f)
                 .setFontSize(6.25f);
         textDiv.add(pNombre);
+
+        // Fecha de firmado (abajo)
+        Text fecha = new Text("Fecha: " + signTime);
+        Paragraph pFecha = new Paragraph().add(fecha).setFont(fontCourier).setMargin(0).setMultipliedLeading(1.0f)
+                .setFontSize(3.25f).setPaddingTop(2f);
+        textDiv.add(pFecha);
 
         try (Canvas textLayoutCanvas = new Canvas(canvas, signatureRect)) {
             textLayoutCanvas.add(textDiv);
