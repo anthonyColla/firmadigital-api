@@ -147,6 +147,10 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
                 }
             }
 
+            // Forzar tamaño mínimo para que la firma sea legible
+            if (qrAncho < 200f) qrAncho = 200f;
+            if (qrAlto < 80f) qrAlto = 80f;
+
             params.setProperty("PositionOnPageLowerLeftX", String.valueOf((int) qrPosX));
             params.setProperty("PositionOnPageLowerLeftY", String.valueOf((int) qrPosY));
             params.setProperty("PositionOnPageUpperRightX", String.valueOf((int) qrAncho));
