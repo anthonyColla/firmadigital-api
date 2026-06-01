@@ -95,8 +95,7 @@ public class QrAppereance implements CustomAppearance {
 
         byte[] byteQR = null;
         try {
-            byteQR = QRCode.generateQR(text, (int) signaturePositionOnPage.getHeight(),
-                    (int) signaturePositionOnPage.getHeight());
+            byteQR = QRCode.generateQR(text, 300, 300);
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Error al generar QR: {0}", e);
         }
@@ -116,11 +115,14 @@ public class QrAppereance implements CustomAppearance {
         float totalWidth = signaturePositionOnPage.getWidth();
         float totalHeight = signaturePositionOnPage.getHeight();
 
-        // QR cuadrado: lado = alto disponible (85% para QR, 15% para logo)
-        float logoH = totalHeight * 0.15f;
+        // QR cuadrado + logo mismo ancho, todo cabe en totalHeight
+        // Logo 135x37 → ratio alto/ancho = 0.274
+        // qrSide + gap + qrSide*0.274 = totalHeight
+        // qrSide = (totalHeight - gap) / 1.274
         float gap = 2f;
-        float qrSide = totalHeight - logoH - gap;
-        // Left column = qrSide de ancho
+        float logoRatio = 37f / 135f;
+        float qrSide = (totalHeight - gap) / (1f + logoRatio);
+        float logoH = qrSide * logoRatio;
         float leftWidth = qrSide;
 
         // QR — dibujado con Canvas + scaleToFit (mantiene proporción, sin deformar)
@@ -146,7 +148,7 @@ public class QrAppereance implements CustomAppearance {
         }
 
         // Lado derecho: texto — pegado al QR
-        float separacion = leftWidth + 3f;
+        float separacion = leftWidth + 2f;
         Rectangle signatureRect = new Rectangle(separacion, 0,
                 totalWidth - separacion, totalHeight);
 
@@ -163,11 +165,37 @@ public class QrAppereance implements CustomAppearance {
                 .setMultipliedLeading(1.0f).setFontSize(3.25f);
         textDiv.add(pFirmado);
 
-        // Nombre en bold (wrap automático por ancho del div)
-        Text contenido = new Text(nombreFirmante.trim());
-        Paragraph pNombre = new Paragraph().add(contenido).setFont(fontCourierBold).setMargin(0)
+        // Nombre en bold — dividir en dos líneas por mitad de palabras
+        String nombreTrimmed = nombreFirmante.trim();
+        String[] palabras = nombreTrimmed.split("\\s+");
+        String linea1, linea2;
+        if (palabras.length >= 2) {
+            int mitad = palabras.length / 2;
+            StringBuilder sb1 = new StringBuilder();
+            StringBuilder sb2 = new StringBuilder();
+            for (int i = 0; i < palabras.length; i++) {
+                if (i < mitad) {
+                    if (sb1.length() > 0) sb1.append(" ");
+                    sb1.append(palabras[i]);
+                } else {
+                    if (sb2.length() > 0) sb2.append(" ");
+                    sb2.append(palabras[i]);
+                }
+            }
+            linea1 = sb1.toString();
+            linea2 = sb2.toString();
+        } else {
+            linea1 = nombreTrimmed;
+            linea2 = null;
+        }
+        Paragraph pNombre = new Paragraph().add(new Text(linea1)).setFont(fontCourierBold).setMargin(0)
                 .setMultipliedLeading(0.9f).setFontSize(6.25f);
         textDiv.add(pNombre);
+        if (linea2 != null) {
+            Paragraph pNombre2 = new Paragraph().add(new Text(linea2)).setFont(fontCourierBold).setMargin(0)
+                    .setMultipliedLeading(0.9f).setFontSize(6.25f);
+            textDiv.add(pNombre2);
+        }
 
         // Fecha
         Text fecha = new Text("Fecha: " + signTime);
