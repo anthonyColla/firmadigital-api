@@ -115,37 +115,38 @@ public class QrAppereance implements CustomAppearance {
 
         float totalWidth = signaturePositionOnPage.getWidth();
         float totalHeight = signaturePositionOnPage.getHeight();
-        float leftWidth = totalWidth / 3;
+
+        // QR cuadrado: lado = alto disponible (85% para QR, 15% para logo)
+        float logoH = totalHeight * 0.15f;
         float gap = 2f;
+        float qrSide = totalHeight - logoH - gap;
+        // Left column = qrSide de ancho
+        float leftWidth = qrSide;
 
-        // Logo aspect ratio: 135x37 → ratio = 37/135 = 0.274
-        // logoH = qrSide * 0.274
-        // Necesitamos: qrSide + gap + logoH <= totalHeight
-        // qrSide + gap + qrSide * 0.274 <= totalHeight
-        // qrSide * 1.274 <= totalHeight - gap
-        // qrSide <= (totalHeight - gap) / 1.274
-        float logoRatio = 37f / 135f; // alto/ancho del logo
-        float qrSide = Math.min(leftWidth, (totalHeight - gap) / (1f + logoRatio));
-        float logoDrawW = qrSide;
-        float logoDrawH = qrSide * logoRatio;
-
-        // Posiciones: logo abajo (y=0), QR arriba (y=logoDrawH+gap)
-        float qrY = logoDrawH + gap;
-
-        // QR — cuadrado, dibujo directo
+        // QR — dibujado con Canvas + scaleToFit (mantiene proporción, sin deformar)
         if (byteQR != null) {
-            ImageData qrData = ImageDataFactory.create(byteQR);
-            canvas.addImageWithTransformationMatrix(qrData, qrSide, 0, 0, qrSide, 0, qrY);
+            Rectangle qrRect = new Rectangle(0, logoH + gap, qrSide, qrSide);
+            com.itextpdf.layout.element.Image qrImage = new com.itextpdf.layout.element.Image(ImageDataFactory.create(byteQR));
+            qrImage.scaleToFit(qrSide, qrSide);
+            qrImage.setMargins(0, 0, 0, 0);
+            try (Canvas qrCanvas = new Canvas(canvas, qrRect)) {
+                qrCanvas.add(qrImage);
+            }
         }
 
-        // Logo — mismo ancho que QR, en y=0
+        // Logo — scaleToFit mismo ancho que QR, mantiene proporción
         if (logoBytes != null) {
-            ImageData logoData = ImageDataFactory.create(logoBytes);
-            canvas.addImageWithTransformationMatrix(logoData, logoDrawW, 0, 0, logoDrawH, 0, 0);
+            Rectangle logoRect = new Rectangle(0, 0, qrSide, logoH);
+            com.itextpdf.layout.element.Image logoImage = new com.itextpdf.layout.element.Image(ImageDataFactory.create(logoBytes));
+            logoImage.scaleToFit(qrSide, logoH);
+            logoImage.setMargins(0, 0, 0, 0);
+            try (Canvas logoCanvas = new Canvas(canvas, logoRect)) {
+                logoCanvas.add(logoImage);
+            }
         }
 
-        // Lado derecho: nombre arriba + fecha abajo — pegado al QR
-        float separacion = qrSide + 2.5f;
+        // Lado derecho: texto — pegado al QR
+        float separacion = leftWidth + 3f;
         Rectangle signatureRect = new Rectangle(separacion, 0,
                 totalWidth - separacion, totalHeight);
 
@@ -156,21 +157,22 @@ public class QrAppereance implements CustomAppearance {
         textDiv.setHorizontalAlignment(HorizontalAlignment.LEFT);
         textDiv.setPaddingLeft(2f);
 
-        // Nombre del firmante (arriba)
+        // "Firmado electrónicamente por:"
         Text firmado = new Text("Firmado electrónicamente por:");
-        Paragraph pFirmado = new Paragraph().add(firmado).setFont(fontCourier).setMargin(0).setMultipliedLeading(1.0f)
-                .setFontSize(3.25f);
+        Paragraph pFirmado = new Paragraph().add(firmado).setFont(fontCourier).setMargin(0)
+                .setMultipliedLeading(1.0f).setFontSize(3.25f);
         textDiv.add(pFirmado);
 
+        // Nombre en bold (wrap automático por ancho del div)
         Text contenido = new Text(nombreFirmante.trim());
-        Paragraph pNombre = new Paragraph().add(contenido).setFont(fontCourierBold).setMargin(0).setMultipliedLeading(0.9f)
-                .setFontSize(6.25f);
+        Paragraph pNombre = new Paragraph().add(contenido).setFont(fontCourierBold).setMargin(0)
+                .setMultipliedLeading(0.9f).setFontSize(6.25f);
         textDiv.add(pNombre);
 
-        // Fecha de firmado (abajo)
+        // Fecha
         Text fecha = new Text("Fecha: " + signTime);
-        Paragraph pFecha = new Paragraph().add(fecha).setFont(fontCourier).setMargin(0).setMultipliedLeading(1.0f)
-                .setFontSize(3.25f).setPaddingTop(2f);
+        Paragraph pFecha = new Paragraph().add(fecha).setFont(fontCourier).setMargin(0)
+                .setMultipliedLeading(1.0f).setFontSize(3.25f).setPaddingTop(2f);
         textDiv.add(pFecha);
 
         try (Canvas textLayoutCanvas = new Canvas(canvas, signatureRect)) {
