@@ -89,7 +89,7 @@ public class QrAppereance implements CustomAppearance {
             sb.append("LOCALIZACION: ").append(location).append("\n");
         }
         sb.append("FECHA: ").append(signTime).append("\n");
-        sb.append("VALIDAR CON: ").append("https://corporacionelizalde.com/").append("\n");
+        sb.append("VALIDAR CON: ").append("https://firmador.solucionesnexus.com/").append("\n");
         sb.append(infoQR);
         String text = sb.toString();
 

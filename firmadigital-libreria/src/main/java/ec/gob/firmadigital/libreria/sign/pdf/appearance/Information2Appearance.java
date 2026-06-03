@@ -76,7 +76,7 @@ public class Information2Appearance implements CustomAppearance {
                 setFontSize(4.75f);
         textDiv.add(paragraph);
 
-        contenido = new Text("Validar únicamente con Corporación Elizalde.\nhttps://corporacionelizalde.com/");
+        contenido = new Text("Validar únicamente con Nexus Soluciones.\nhttps://firmador.solucionesnexus.com/");
         paragraph = new Paragraph().add(contenido).setFont(fontHelvetica).setMargin(0).
                 setMultipliedLeading(0.9f)
                 .setFontSize(2.75f);
