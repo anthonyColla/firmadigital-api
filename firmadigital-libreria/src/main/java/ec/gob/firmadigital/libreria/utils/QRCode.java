@@ -69,10 +69,14 @@ public class QRCode {
         float moduleW = (float) w / matrixW;
         float moduleH = (float) h / matrixH;
 
-        // Zona central para isologo (30% del QR)
-        int overlaySize = (int) (w * 0.27);
-        int overlayX = (w - overlaySize) / 2;
-        int overlayY = (h - overlaySize) / 2;
+        // Zona central para isologo (35% del QR) con margen blanco
+        int clearZone = (int) (w * 0.35);  // Zona limpia (sin módulos QR)
+        int clearX = (w - clearZone) / 2;
+        int clearY = (h - clearZone) / 2;
+        int padding = (int) (clearZone * 0.08); // Margen blanco alrededor del isologo
+        int overlaySize = clearZone - (padding * 2);
+        int overlayX = clearX + padding;
+        int overlayY = clearY + padding;
 
         BufferedImage result = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = result.createGraphics();
@@ -92,9 +96,9 @@ public class QRCode {
                 float px = col * moduleW;
                 float py = row * moduleH;
 
-                // Saltar módulos en la zona del isologo
-                boolean inOverlayZone = (px + moduleW) > overlayX && px < (overlayX + overlaySize)
-                        && (py + moduleH) > overlayY && py < (overlayY + overlaySize);
+                // Saltar módulos en la zona limpia (clearZone)
+                boolean inOverlayZone = (px + moduleW) > clearX && px < (clearX + clearZone)
+                        && (py + moduleH) > clearY && py < (clearY + clearZone);
                 if (inOverlayZone) continue;
 
                 float dotW = moduleW * dotRatio;
