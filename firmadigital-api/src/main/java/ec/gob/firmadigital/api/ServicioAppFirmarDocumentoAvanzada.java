@@ -43,22 +43,22 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@Path("/appfirmardocumentoconqr")
-public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
+@Path("/appfirmardocumentoavanzada")
+public class ServicioAppFirmarDocumentoAvanzada extends RequestSizeFilter {
 
-    private static final Logger LOGGER = Logger.getLogger(ServicioAppFirmarDocumentoConQR.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(ServicioAppFirmarDocumentoAvanzada.class.getName());
 
     @POST
     @Secured
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    public String firmarDocumentoConQR(
+    public String firmarDocumentoAvanzada(
             @FormParam("pkcs12") String pkcs12Base64,
             @FormParam("password") String password,
             @FormParam("documento") String documentoBase64,
             @FormParam("json") String jsonMetadata
     ) {
-        LOGGER.log(Level.INFO, "Iniciando firma con QR");
+        LOGGER.log(Level.INFO, "Iniciando firma avanzada");
 
         try {
             if (pkcs12Base64 == null || pkcs12Base64.isEmpty()) {
@@ -90,14 +90,14 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
             // 2. Decodificar documento
             byte[] docBytes = Base64Utils.decodificar(documentoBase64);
 
-            // 3. Configurar parametros de firma con QR
+            // 3. Configurar parametros de firma avanzada (information2)
             Properties params = new Properties();
-            params.setProperty("typeSignature", "QR");
+            params.setProperty("typeSignature", "information2");
 
-            float qrPosX = 50f;
-            float qrPosY = 50f;
-            float qrAncho = 200f;
-            float qrAlto = 50f;
+            float posX = 50f;
+            float posY = 50f;
+            float ancho = 200f;
+            float alto = 50f;
 
             if (jsonMetadata != null && !jsonMetadata.isEmpty()) {
                 try {
@@ -115,19 +115,16 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
                     if (metadata.has("identificacion")) {
                         params.setProperty("identificacion", metadata.get("identificacion").getAsString());
                     }
-                    if (metadata.has("infoQR")) {
-                        params.setProperty("infoQR", metadata.get("infoQR").getAsString());
-                    }
-                    if (metadata.has("qrPagina")) {
-                        int qrPagina = metadata.get("qrPagina").getAsInt();
-                        if (qrPagina > 0) {
-                            params.setProperty("page", String.valueOf(qrPagina));
+                    if (metadata.has("pagina")) {
+                        int pagina = metadata.get("pagina").getAsInt();
+                        if (pagina > 0) {
+                            params.setProperty("page", String.valueOf(pagina));
                         }
                     }
-                    if (metadata.has("qrPosX")) qrPosX = metadata.get("qrPosX").getAsFloat();
-                    if (metadata.has("qrPosY")) qrPosY = metadata.get("qrPosY").getAsFloat();
-                    if (metadata.has("qrAncho")) qrAncho = metadata.get("qrAncho").getAsFloat();
-                    if (metadata.has("qrAlto")) qrAlto = metadata.get("qrAlto").getAsFloat();
+                    if (metadata.has("posX")) posX = metadata.get("posX").getAsFloat();
+                    if (metadata.has("posY")) posY = metadata.get("posY").getAsFloat();
+                    if (metadata.has("ancho")) ancho = metadata.get("ancho").getAsFloat();
+                    if (metadata.has("alto")) alto = metadata.get("alto").getAsFloat();
 
                 } catch (Exception e) {
                     LOGGER.log(Level.WARNING, "Error al parsear metadatos JSON: {0}", e.getMessage());
@@ -147,19 +144,17 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
                 }
             }
 
-            // Forzar tamaño mínimo para que la firma sea legible
-            if (qrAncho < 150f) qrAncho = 150f;
-            if (qrAlto < 50f) qrAlto = 50f;
+            if (ancho < 150f) ancho = 150f;
+            if (alto < 50f) alto = 50f;
 
-            params.setProperty("PositionOnPageLowerLeftX", String.valueOf((int) qrPosX));
-            params.setProperty("PositionOnPageLowerLeftY", String.valueOf((int) qrPosY));
-            params.setProperty("PositionOnPageUpperRightX", String.valueOf((int) qrAncho));
-            params.setProperty("PositionOnPageUpperRightY", String.valueOf((int) qrAlto));
+            params.setProperty("PositionOnPageLowerLeftX", String.valueOf((int) posX));
+            params.setProperty("PositionOnPageLowerLeftY", String.valueOf((int) posY));
+            params.setProperty("PositionOnPageUpperRightX", String.valueOf((int) ancho));
+            params.setProperty("PositionOnPageUpperRightY", String.valueOf((int) alto));
 
             // 5. Firmar (con retry sin TSA si falla)
             PrivateKeySigner signer = new PrivateKeySigner(privateKey, DigestAlgorithm.SHA256);
             byte[] documentoFirmado;
-            boolean firmadoSinTSA = false;
 
             try {
                 PadesBasic padesSigner = new PadesBasic(signer);
@@ -168,11 +163,9 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
                 String tsaMsg = tsaEx.getMessage() != null ? tsaEx.getMessage() : "";
                 if (tsaMsg.contains("TSA")) {
                     LOGGER.log(Level.WARNING, "TSA fallo, firmando sin sellado de tiempo");
-                    // Quitar identificacion para que no use TSA
                     params.remove("identificacion");
                     PadesBasic padesSinTsa = new PadesBasic(signer);
                     documentoFirmado = padesSinTsa.sign(new ByteArrayInputStream(docBytes), signer, certChain, params);
-                    firmadoSinTSA = true;
                 } else {
                     throw tsaEx;
                 }
@@ -183,7 +176,7 @@ public class ServicioAppFirmarDocumentoConQR extends RequestSizeFilter {
 
             JsonObject response = new JsonObject();
             response.addProperty("resultado", "OK");
-            response.addProperty("mensaje", "Documento firmado con QR exitosamente");
+            response.addProperty("mensaje", "Documento firmado con firma avanzada exitosamente");
             response.addProperty("documentoFirmado", documentoFirmadoBase64);
             return new Gson().toJson(response);
 

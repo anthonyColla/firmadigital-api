@@ -18,6 +18,9 @@
 package ec.gob.firmadigital.libreria.sign.pdf.appearance;
 
 import java.io.IOException;
+import java.time.ZonedDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.geom.Rectangle;
@@ -44,16 +47,23 @@ public class Information1Appearance implements CustomAppearance {
 
     public Information1Appearance(String nombreFirmante, String reason, String location, String signTime) {
         this.nombreFirmante = nombreFirmante;
-        this.reason = reason;
-        this.location = location;
-        this.signTime = signTime;
+        this.reason = reason != null ? reason : "";
+        this.location = location != null ? location : "";
+
+        if (signTime == null || signTime.trim().isEmpty()) {
+            this.signTime = ZonedDateTime.now(ZoneOffset.UTC)
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"));
+        } else {
+            this.signTime = signTime;
+        }
     }
 
     @Override
     public void createCustomAppearance(PdfSignatureAppearance signatureAppearance, int pageNumber,
             PdfDocument pdfDocument, Rectangle signaturePositionOnPage) throws IOException {
 
-        PdfFont fontHelvetica = loadFont("fonts/inter.ttf");
+        PdfFont fontRegular = loadFont("fonts/inter.ttf");
+        PdfFont fontBold = loadFont("fonts/courier-bold.ttf");
 
         PdfFormXObject layer2 = signatureAppearance.getLayer2();
         PdfCanvas canvas = new PdfCanvas(layer2, pdfDocument);
@@ -68,37 +78,37 @@ public class Information1Appearance implements CustomAppearance {
         textDiv.setHorizontalAlignment(HorizontalAlignment.LEFT);
 
         Text texto = new Text("Firmado electrónicamente por:\n");
-        Paragraph paragraph = new Paragraph().add(texto).setFont(fontHelvetica).setMargin(0).
+        Paragraph paragraph = new Paragraph().add(texto).setFont(fontRegular).setMargin(0).
                 setMultipliedLeading(0.9f)
                 .setFontSize(2.75f);
         textDiv.add(paragraph);
 
         Text contenido = new Text(nombreFirmante.trim());
-        paragraph = new Paragraph().add(contenido).setFont(fontHelvetica).setMargin(0).
+        paragraph = new Paragraph().add(contenido).setFont(fontBold).setMargin(0).
                 setMultipliedLeading(0.9f)
                 .setFontSize(3.75f);
         textDiv.add(paragraph);
 
-        contenido = new Text("Validar únicamente con Nexus Soluciones");
-        paragraph = new Paragraph().add(contenido).setFont(fontHelvetica).setMargin(0).
+        contenido = new Text("Nexus Soluciones");
+        paragraph = new Paragraph().add(contenido).setFont(fontRegular).setMargin(0).
                 setMultipliedLeading(0.9f)
                 .setFontSize(2.75f);
         textDiv.add(paragraph);
 
         contenido = new Text("Razón: " + reason);
-        paragraph = new Paragraph().add(contenido).setFont(fontHelvetica).setMargin(0).
+        paragraph = new Paragraph().add(contenido).setFont(fontRegular).setMargin(0).
                 setMultipliedLeading(0.9f)
                 .setFontSize(2.75f);
         textDiv.add(paragraph);
 
         contenido = new Text("Localización: " + location);
-        paragraph = new Paragraph().add(contenido).setFont(fontHelvetica).setMargin(0).
+        paragraph = new Paragraph().add(contenido).setFont(fontRegular).setMargin(0).
                 setMultipliedLeading(0.9f)
                 .setFontSize(2.75f);
         textDiv.add(paragraph);
 
         contenido = new Text("Fecha: " + signTime);
-        paragraph = new Paragraph().add(contenido).setFont(fontHelvetica).setMargin(0).
+        paragraph = new Paragraph().add(contenido).setFont(fontRegular).setMargin(0).
                 setMultipliedLeading(0.9f)
                 .setFontSize(2.75f);
         textDiv.add(paragraph);
