@@ -93,33 +93,12 @@ public class QrAppereance implements CustomAppearance {
         sb.append(infoQR);
         String text = sb.toString();
 
-        // Cargar isologo para integrar pixelado en el QR
-        byte[] isologoBytes = null;
-        try (InputStream isologoStream = getClass().getClassLoader().getResourceAsStream("images/isologo.png")) {
-            if (isologoStream != null) {
-                isologoBytes = isologoStream.readAllBytes();
-            } else {
-                LOGGER.log(Level.WARNING, "No se encontró isologo.png en resources/images/");
-            }
-        } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Error al cargar isologo: {0}", e.getMessage());
-        }
-
-        // Generar QR con isologo nítido en el centro
+        // Generar QR sin isologo
         byte[] byteQR = null;
         try {
-            byteQR = QRCode.generateQR(text, 300, 300, isologoBytes);
-            LOGGER.log(Level.INFO, "QR generado: {0} bytes, isologo: {1}",
-                    new Object[]{byteQR != null ? byteQR.length : 0, isologoBytes != null ? "si" : "no"});
+            byteQR = QRCode.generateQR(text, 300, 300);
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error al generar QR con isologo", e);
-            // Fallback: generar QR sin isologo
-            try {
-                byteQR = QRCode.generateQR(text, 300, 300);
-                LOGGER.log(Level.INFO, "QR generado sin isologo (fallback)");
-            } catch (Exception e2) {
-                LOGGER.log(Level.SEVERE, "Error al generar QR fallback", e2);
-            }
+            LOGGER.log(Level.SEVERE, "Error al generar QR", e);
         }
 
         float totalWidth = signaturePositionOnPage.getWidth();
