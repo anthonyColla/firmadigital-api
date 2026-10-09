@@ -38,7 +38,6 @@ import com.itextpdf.kernel.xmp.XMPConst;
 import com.itextpdf.kernel.xmp.XMPException;
 import com.itextpdf.kernel.xmp.XMPMeta;
 import com.itextpdf.kernel.xmp.XMPMetaFactory;
-import com.itextpdf.kernel.xmp.options.SerializeOptions;
 import com.itextpdf.signatures.PdfSignatureAppearance;
 
 import ec.gob.firmadigital.libreria.certificate.CertEcUtils;
@@ -229,8 +228,7 @@ public abstract class BaseSigner {
                     xmpMeta.deleteProperty(XMPConst.NS_PDFA_ID, "conformance");
                     xmpMeta.deleteProperty(XMPConst.NS_PDFA_ID, "amd");
                     xmpMeta.deleteProperty(XMPConst.NS_PDFA_ID, "corr");
-                    byte[] newXmp = XMPMetaFactory.serializeToBuffer(xmpMeta, new SerializeOptions());
-                    doc.setXmpMetadata(newXmp);
+                    doc.setXmpMetadata(xmpMeta);
                 } catch (XMPException e) {
                     LOGGER.log(Level.WARNING, "No se pudo modificar XMP PDF/A: {0}", e.getMessage());
                     return pdfBytes;
