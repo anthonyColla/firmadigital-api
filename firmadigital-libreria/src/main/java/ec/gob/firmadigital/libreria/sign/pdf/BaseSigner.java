@@ -17,9 +17,11 @@
  */
 package ec.gob.firmadigital.libreria.sign.pdf;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.Date;
@@ -30,7 +32,13 @@ import java.util.logging.Logger;
 import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfReader;
+import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.kernel.pdf.StampingProperties;
+import com.itextpdf.kernel.xmp.XMPConst;
+import com.itextpdf.kernel.xmp.XMPException;
+import com.itextpdf.kernel.xmp.XMPMeta;
+import com.itextpdf.kernel.xmp.XMPMetaFactory;
+import com.itextpdf.kernel.xmp.options.SerializeOptions;
 import com.itextpdf.signatures.PdfSignatureAppearance;
 
 import ec.gob.firmadigital.libreria.certificate.CertEcUtils;
@@ -75,7 +83,9 @@ public abstract class BaseSigner {
      */
     public byte[] sign(InputStream is, RubricaSigner signer, Certificate[] certChain, Properties params)
             throws IOException {
-        try (PdfReader pdfReader = new PdfReader(is) {
+        byte[] pdfBytes = is.readAllBytes();
+        pdfBytes = stripPdfAConformanceIfNeeded(pdfBytes);
+        try (PdfReader pdfReader = new PdfReader(new ByteArrayInputStream(pdfBytes)) {
             @Override
             public boolean hasRebuiltXref() {
                 return false;
@@ -185,6 +195,49 @@ public abstract class BaseSigner {
             }
             return signInternal(os, pdfSigner, signer, certChain, params);
         }
+    }
+
+    private byte[] stripPdfAConformanceIfNeeded(byte[] pdfBytes) throws IOException {
+        boolean isPdfA = false;
+        try (PdfReader checkReader = new PdfReader(new ByteArrayInputStream(pdfBytes));
+             PdfDocument checkDoc = new PdfDocument(checkReader)) {
+            byte[] xmpBytes = checkDoc.getXmpMetadata();
+            if (xmpBytes != null) {
+                String xmpStr = new String(xmpBytes, StandardCharsets.UTF_8);
+                isPdfA = xmpStr.contains("pdfaid");
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "No se pudo verificar conformance PDF/A: {0}", e.getMessage());
+            return pdfBytes;
+        }
+
+        if (!isPdfA) {
+            return pdfBytes;
+        }
+
+        LOGGER.log(Level.INFO, "PDF/A detectado: removiendo declaracion de conformance para permitir firma");
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (PdfReader r = new PdfReader(new ByteArrayInputStream(pdfBytes));
+             PdfWriter w = new PdfWriter(baos);
+             PdfDocument doc = new PdfDocument(r, w, new StampingProperties().useAppendMode())) {
+            byte[] xmpBytes = doc.getXmpMetadata();
+            if (xmpBytes != null) {
+                try {
+                    XMPMeta xmpMeta = XMPMetaFactory.parseFromBuffer(xmpBytes);
+                    xmpMeta.deleteProperty(XMPConst.NS_PDFA_ID, "part");
+                    xmpMeta.deleteProperty(XMPConst.NS_PDFA_ID, "conformance");
+                    xmpMeta.deleteProperty(XMPConst.NS_PDFA_ID, "amd");
+                    xmpMeta.deleteProperty(XMPConst.NS_PDFA_ID, "corr");
+                    byte[] newXmp = XMPMetaFactory.serializeToBuffer(xmpMeta, new SerializeOptions());
+                    doc.setXmpMetadata(newXmp);
+                } catch (XMPException e) {
+                    LOGGER.log(Level.WARNING, "No se pudo modificar XMP PDF/A: {0}", e.getMessage());
+                    return pdfBytes;
+                }
+            }
+        }
+        return baos.toByteArray();
     }
 
     protected abstract byte[] signInternal(ByteArrayOutputStream os, com.itextpdf.signatures.PdfSigner pdfSigner,

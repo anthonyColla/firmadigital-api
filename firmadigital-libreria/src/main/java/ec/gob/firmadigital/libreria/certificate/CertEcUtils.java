@@ -314,7 +314,18 @@ public class CertEcUtils {
         return "Entidad no reconocida " + certificado.getIssuerDN().getName();
     }
 
+    /**
+     * Datos del titular según la entidad certificadora. Si la entidad no dejó una
+     * identificación válida en su OID (p. ej. un UUID), se toma del subject (serialNumber),
+     * así la validación por cédula funciona sin importar la entidad.
+     */
     public static DatosUsuario getDatosUsuarios(X509Certificate certificado) throws EntidadCertificadoraNoValidaException {
+        DatosUsuario datosUsuario = obtenerDatosUsuariosPorEntidad(certificado);
+        IdentificacionUtils.completarCedula(datosUsuario, certificado);
+        return datosUsuario;
+    }
+
+    private static DatosUsuario obtenerDatosUsuariosPorEntidad(X509Certificate certificado) throws EntidadCertificadoraNoValidaException {
         DatosUsuario datosUsuario = new DatosUsuario();
         if (CertificadoBancoCentralFactory.esCertificadoDelBancoCentral(certificado)) {
             CertificadoBancoCentral certificadoBancoCentral = CertificadoBancoCentralFactory.construir(certificado);
