@@ -72,6 +72,7 @@ import com.itextpdf.signatures.SignatureUtil;
 
 import static ec.gob.firmadigital.libreria.utils.CheckPDF.checkPDF;
 import ec.gob.firmadigital.libreria.certificate.CertEcUtils;
+import ec.gob.firmadigital.libreria.certificate.IdentificacionUtils;
 import ec.gob.firmadigital.libreria.certificate.to.Certificado;
 import ec.gob.firmadigital.libreria.certificate.to.DatosUsuario;
 import ec.gob.firmadigital.libreria.certificate.to.Documento;
@@ -635,33 +636,49 @@ public class Utils {
         return certificado;
     }
 
+    /**
+     * Completa con el subject DN lo que la entidad no haya dado. Nunca pisa una cédula válida:
+     * algunas entidades (p. ej. FirmaSegura) ponen un UUID en SERIALNUMBER y la cédula va en sus OIDs.
+     */
+    private static boolean isEmpty(String valor) {
+        return valor == null || valor.trim().isEmpty();
+    }
+
     public static DatosUsuario infoCertificado(DatosUsuario datosUsuario, SignInfo signInfo) {
         X500Principal subjectX500Principal = signInfo.getCerts()[0].getSubjectX500Principal();
         X500Name subjectX500name = new X500Name(subjectX500Principal.getName());
         try {
-            // Cedula (SERIALNUMBER)
-            if (subjectX500name.getRDNs(BCStyle.SERIALNUMBER).length > 0) {
-                datosUsuario.setCedula(subjectX500name.getRDNs(BCStyle.SERIALNUMBER)[0].getFirst().getValue().toString());
+            // Cedula (SERIALNUMBER), solo si aún no hay una válida y la del subject sí lo es
+            if (!IdentificacionUtils.esIdentificacion(datosUsuario.getCedula())
+                    && subjectX500name.getRDNs(BCStyle.SERIALNUMBER).length > 0) {
+                String serial = IdentificacionUtils.normalizar(subjectX500name.getRDNs(BCStyle.SERIALNUMBER)[0].getFirst().getValue().toString());
+                if (IdentificacionUtils.esIdentificacion(serial) || isEmpty(datosUsuario.getCedula())) {
+                    datosUsuario.setCedula(serial);
+                }
             }
             // Nombre (GIVENNAME o CN como fallback)
-            if (subjectX500name.getRDNs(BCStyle.GIVENNAME).length > 0) {
-                datosUsuario.setNombre(subjectX500name.getRDNs(BCStyle.GIVENNAME)[0].getFirst().getValue().toString());
-            } else if (subjectX500name.getRDNs(BCStyle.CN).length > 0) {
-                datosUsuario.setNombre(subjectX500name.getRDNs(BCStyle.CN)[0].getFirst().getValue().toString());
+            if (isEmpty(datosUsuario.getNombre())) {
+                if (subjectX500name.getRDNs(BCStyle.GIVENNAME).length > 0) {
+                    datosUsuario.setNombre(subjectX500name.getRDNs(BCStyle.GIVENNAME)[0].getFirst().getValue().toString());
+                } else if (subjectX500name.getRDNs(BCStyle.CN).length > 0) {
+                    datosUsuario.setNombre(subjectX500name.getRDNs(BCStyle.CN)[0].getFirst().getValue().toString());
+                }
             }
             // Apellido (SURNAME)
-            if (subjectX500name.getRDNs(BCStyle.SURNAME).length > 0) {
+            if (isEmpty(datosUsuario.getApellido()) && subjectX500name.getRDNs(BCStyle.SURNAME).length > 0) {
                 datosUsuario.setApellido(subjectX500name.getRDNs(BCStyle.SURNAME)[0].getFirst().getValue().toString());
             }
             // Institucion (O = Organization)
-            if (subjectX500name.getRDNs(BCStyle.O).length > 0) {
+            if (isEmpty(datosUsuario.getInstitucion()) && subjectX500name.getRDNs(BCStyle.O).length > 0) {
                 datosUsuario.setInstitucion(subjectX500name.getRDNs(BCStyle.O)[0].getFirst().getValue().toString());
             }
             // Cargo (T = Title, fallback OU)
-            if (subjectX500name.getRDNs(BCStyle.T).length > 0) {
-                datosUsuario.setCargo(subjectX500name.getRDNs(BCStyle.T)[0].getFirst().getValue().toString());
-            } else if (subjectX500name.getRDNs(BCStyle.OU).length > 0) {
-                datosUsuario.setCargo(subjectX500name.getRDNs(BCStyle.OU)[0].getFirst().getValue().toString());
+            if (isEmpty(datosUsuario.getCargo())) {
+                if (subjectX500name.getRDNs(BCStyle.T).length > 0) {
+                    datosUsuario.setCargo(subjectX500name.getRDNs(BCStyle.T)[0].getFirst().getValue().toString());
+                } else if (subjectX500name.getRDNs(BCStyle.OU).length > 0) {
+                    datosUsuario.setCargo(subjectX500name.getRDNs(BCStyle.OU)[0].getFirst().getValue().toString());
+                }
             }
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Error extrayendo datos del Subject DN: {0}", e.getMessage());
